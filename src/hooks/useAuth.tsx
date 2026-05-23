@@ -15,6 +15,7 @@ import {
   signInWithPopup,
   signOut,
 } from "firebase/auth";
+import { FirebaseError } from "firebase/app";
 import { auth, db, ensureAuthPersistence, googleProvider } from "@/firebase/firebase";
 import { AppUser } from "@/types";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
@@ -35,61 +36,80 @@ interface AuthContextShape {
 
 const AuthContext = createContext<AuthContextShape | null>(null);
 
+async function upsertUserProfile(user: User, displayNameOverride?: string) {
+  const userRef = doc(db, "users", user.uid);
+  const snap = await getDoc(userRef);
+
+  if (snap.exists()) {
+    return snap.data() as AppUser;
+  }
+
+  const profile = {
+    uid: user.uid,
+    email: user.email ?? "",
+    displayName: displayNameOverride ?? user.displayName ?? "Trader",
+    role: "user" as const,
+    balance: 0,
+    locked: 0,
+    currency: "INR",
+    portfolio: [],
+    transactions: [],
+    updatedAt: Date.now(),
+    createdAt: Date.now(),
+    createdAtServer: serverTimestamp(),
+  };
+
+  await setDoc(userRef, profile, { merge: true });
+  return {
+    uid: profile.uid,
+    email: profile.email,
+    displayName: profile.displayName,
+    role: profile.role,
+    createdAt: profile.createdAt,
+  } satisfies AppUser;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      setLoading(false);
-    }, 7000);
-
     const unsub = onAuthStateChanged(auth, async (user) => {
+      setFirebaseUser(user);
+      setLoading(false);
+
+      if (!user) {
+        setAppUser(null);
+        return;
+      }
+
       try {
-        setFirebaseUser(user);
-        if (!user) {
-          setAppUser(null);
-          return;
-        }
-
-        const userRef = doc(db, "users", user.uid);
-        const userSnap = await getDoc(userRef);
-
-        if (!userSnap.exists()) {
-          const newUser: Omit<AppUser, "createdAt"> = {
+        const profile = await upsertUserProfile(user);
+        setAppUser(profile);
+      } catch (error) {
+        if (error instanceof FirebaseError) {
+          console.error("[AuthSync] Failed to read/write users profile in Firestore", {
+            code: error.code,
+            message: error.message,
             uid: user.uid,
-            email: user.email ?? "",
-            displayName: user.displayName ?? "Trader",
-            role: "user",
-          };
-
-          await setDoc(userRef, {
-            ...newUser,
-            createdAt: Date.now(),
-            createdAtServer: serverTimestamp(),
+            projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
           });
-          setAppUser({ ...newUser, createdAt: Date.now() });
         } else {
-          setAppUser(userSnap.data() as AppUser);
+          console.error("[AuthSync] Unknown Firestore profile sync error", error);
         }
-      } catch {
-        if (user) {
-          setAppUser({
-            uid: user.uid,
-            email: user.email ?? "",
-            displayName: user.displayName ?? "Trader",
-            role: "user",
-            createdAt: Date.now(),
-          });
-        }
-      } finally {
-        setLoading(false);
+
+        setAppUser({
+          uid: user.uid,
+          email: user.email ?? "",
+          displayName: user.displayName ?? "Trader",
+          role: "user",
+          createdAt: Date.now(),
+        });
       }
     });
 
     return () => {
-      clearTimeout(timeout);
       unsub();
     };
   }, []);
@@ -106,31 +126,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signup: async (email, password, displayName) => {
         await ensureAuthPersistence();
         const cred = await createUserWithEmailAndPassword(auth, email, password);
-        await setDoc(doc(db, "users", cred.user.uid), {
-          uid: cred.user.uid,
-          email,
-          displayName,
-          role: "user",
-          createdAt: Date.now(),
-          createdAtServer: serverTimestamp(),
-        });
+        await upsertUserProfile(cred.user, displayName);
       },
       loginWithGoogle: async () => {
         await ensureAuthPersistence();
         const cred = await signInWithPopup(auth, googleProvider);
-        const userRef = doc(db, "users", cred.user.uid);
-        const snap = await getDoc(userRef);
-
-        if (!snap.exists()) {
-          await setDoc(userRef, {
-            uid: cred.user.uid,
-            email: cred.user.email ?? "",
-            displayName: cred.user.displayName ?? "Trader",
-            role: "user",
-            createdAt: Date.now(),
-            createdAtServer: serverTimestamp(),
-          });
-        }
+        await upsertUserProfile(cred.user);
       },
       logout: async () => {
         await signOut(auth);

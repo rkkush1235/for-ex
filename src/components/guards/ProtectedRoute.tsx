@@ -21,7 +21,11 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }, [loading, firebaseUser, router]);
 
   if (!mounted || loading) {
-    return <div className="p-6 text-sm text-zinc-300">Checking session...</div>;
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="h-14 w-14 animate-spin rounded-full border-4 border-zinc-700 border-t-emerald-400" />
+      </div>
+    );
   }
 
   if (!firebaseUser) {

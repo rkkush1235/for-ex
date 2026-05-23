@@ -19,7 +19,9 @@ export function useTransactions(userId?: string) {
 
   useEffect(() => {
     if (!userId) return;
-    const unsub = subscribeTransactions(userId, setRows);
+    const unsub = subscribeTransactions(userId, setRows, () => {
+      setRows([]);
+    });
     return () => unsub();
   }, [userId]);
 
@@ -30,7 +32,9 @@ export function useDeposits(userId?: string) {
   const [rows, setRows] = useState<DepositRequest[]>([]);
 
   useEffect(() => {
-    const unsub = subscribeDeposits(setRows, userId);
+    const unsub = subscribeDeposits(setRows, userId, () => {
+      setRows([]);
+    });
     return () => unsub();
   }, [userId]);
 
@@ -41,7 +45,9 @@ export function useWithdrawals(userId?: string) {
   const [rows, setRows] = useState<WithdrawalRequest[]>([]);
 
   useEffect(() => {
-    const unsub = subscribeWithdrawals(setRows, userId);
+    const unsub = subscribeWithdrawals(setRows, userId, () => {
+      setRows([]);
+    });
     return () => unsub();
   }, [userId]);
 

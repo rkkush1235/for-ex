@@ -15,7 +15,9 @@ export function useWallet(userId?: string) {
       .catch(() => {
         setWallet(null);
       });
-    const unsub = subscribeWallet(userId, setWallet);
+    const unsub = subscribeWallet(userId, setWallet, () => {
+      setWallet(null);
+    });
     return () => unsub();
   }, [userId]);
 
@@ -27,7 +29,9 @@ export function useTrades(userId?: string) {
 
   useEffect(() => {
     if (!userId) return;
-    const unsub = subscribeTrades(userId, setTrades);
+    const unsub = subscribeTrades(userId, setTrades, () => {
+      setTrades([]);
+    });
     return () => unsub();
   }, [userId]);
 
@@ -38,7 +42,9 @@ export function useAllTrades() {
   const [trades, setTrades] = useState<Trade[]>([]);
 
   useEffect(() => {
-    const unsub = subscribeAllTrades(setTrades);
+    const unsub = subscribeAllTrades(setTrades, () => {
+      setTrades([]);
+    });
     return () => unsub();
   }, []);
 

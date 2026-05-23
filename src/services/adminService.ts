@@ -4,11 +4,18 @@ import { AppUser, DashboardAnalytics } from "@/types";
 
 const usersCol = collection(db, "users");
 
-export function subscribeUsers(onData: (rows: AppUser[]) => void) {
+export function subscribeUsers(
+  onData: (rows: AppUser[]) => void,
+  onError?: (error: unknown) => void,
+) {
   const q = query(usersCol, orderBy("createdAt", "desc"));
-  return onSnapshot(q, (snap) => {
-    onData(snap.docs.map((d) => d.data() as AppUser));
-  });
+  return onSnapshot(
+    q,
+    (snap) => {
+      onData(snap.docs.map((d) => d.data() as AppUser));
+    },
+    (error) => onError?.(error),
+  );
 }
 
 export function subscribeAnalytics(onData: (data: DashboardAnalytics) => void) {

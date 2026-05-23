@@ -1,13 +1,16 @@
 "use client";
 
-import { Menu, LogOut } from "lucide-react";
+import { Menu, LogOut, Wallet } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
+import { useWallet } from "@/hooks/useTrading";
+import { formatCurrency } from "@/utils/format";
 
 export function Navbar({ title }: { title: string }) {
   const { setSidebarOpen } = useAppStore();
   const { appUser, logout } = useAuth();
+  const wallet = useWallet(appUser?.uid);
   const router = useRouter();
 
   return (
@@ -27,6 +30,12 @@ export function Navbar({ title }: { title: string }) {
       </div>
 
       <div className="flex items-center gap-3">
+        <div className="relative rounded-lg border border-zinc-700 bg-zinc-900/70 p-2">
+          <Wallet size={16} className="text-zinc-200" />
+          <span className="absolute -bottom-2 -right-2 rounded-md border border-zinc-700 bg-zinc-950 px-1.5 py-0.5 text-[10px] font-medium text-zinc-200">
+            {formatCurrency(wallet?.balance ?? 0)}
+          </span>
+        </div>
         <div className="hidden text-right sm:block">
           <p className="text-sm font-medium">{appUser?.displayName ?? "Trader"}</p>
           <p className="text-xs text-zinc-400 capitalize">{appUser?.role ?? "user"}</p>

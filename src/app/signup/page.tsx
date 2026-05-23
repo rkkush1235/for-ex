@@ -37,7 +37,7 @@ export default function SignupPage() {
 
     try {
       await signup(data.email, data.password, data.displayName);
-      router.replace("/dashboard");
+      router.replace("/markets");
     } catch (error) {
       if (error instanceof FirebaseError) {
         if (error.code === "auth/email-already-in-use") {

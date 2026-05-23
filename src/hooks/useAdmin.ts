@@ -8,7 +8,9 @@ export function useUsers() {
   const [users, setUsers] = useState<AppUser[]>([]);
 
   useEffect(() => {
-    const unsub = subscribeUsers(setUsers);
+    const unsub = subscribeUsers(setUsers, () => {
+      setUsers([]);
+    });
     return () => unsub();
   }, []);
 

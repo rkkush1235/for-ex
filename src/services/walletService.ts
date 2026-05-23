@@ -1,5 +1,23 @@
-import { newId, readLocalDb, subscribeLocalDb, writeLocalDb } from "@/services/localDb";
+import {
+  addDoc,
+  collection,
+  doc,
+  increment,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+  where,
+} from "firebase/firestore";
+import { db } from "@/firebase/firebase";
 import { DepositRequest, Transaction, WithdrawalRequest } from "@/types";
+
+const usersCol = collection(db, "users");
+const depositsCol = collection(db, "deposits");
+const withdrawalsCol = collection(db, "withdrawals");
+const transactionsCol = collection(db, "transactions");
 
 export async function createDepositRequest(input: {
   userId: string;
@@ -7,18 +25,12 @@ export async function createDepositRequest(input: {
   upiId: string;
   screenshotUrl: string;
 }) {
-  const now = Date.now();
-  const row: DepositRequest = {
-    id: newId("deposit"),
+  await addDoc(depositsCol, {
     ...input,
     status: "pending",
-    createdAt: now,
-  };
-
-  writeLocalDb((prev) => ({
-    ...prev,
-    deposits: [row, ...prev.deposits],
-  }));
+    createdAt: Date.now(),
+    createdAtServer: serverTimestamp(),
+  });
 }
 
 export async function createWithdrawalRequest(input: {
@@ -28,66 +40,72 @@ export async function createWithdrawalRequest(input: {
   accountNumber: string;
   ifscCode: string;
 }) {
-  const now = Date.now();
-  const row: WithdrawalRequest = {
-    id: newId("withdraw"),
+  await addDoc(withdrawalsCol, {
     ...input,
     status: "pending",
-    createdAt: now,
-  };
-
-  writeLocalDb((prev) => ({
-    ...prev,
-    withdrawals: [row, ...prev.withdrawals],
-  }));
-}
-
-export function subscribeTransactions(userId: string, onData: (rows: Transaction[]) => void) {
-  const emit = () => {
-    const rows = readLocalDb()
-      .transactions
-      .filter((item) => item.userId === userId)
-      .sort((a, b) => b.createdAt - a.createdAt);
-    onData(rows);
-  };
-
-  emit();
-  return subscribeLocalDb(() => {
-    emit();
+    createdAt: Date.now(),
+    createdAtServer: serverTimestamp(),
   });
 }
 
-export function subscribeDeposits(onData: (rows: DepositRequest[]) => void, userId?: string) {
-  const emit = () => {
-    const all = readLocalDb().deposits;
-    const rows = (userId ? all.filter((item) => item.userId === userId) : all).sort(
-      (a, b) => b.createdAt - a.createdAt,
-    );
-    onData(rows);
-  };
+export function subscribeTransactions(
+  userId: string,
+  onData: (rows: Transaction[]) => void,
+  onError?: (error: unknown) => void,
+) {
+  const q = query(
+    transactionsCol,
+    where("userId", "==", userId),
+    orderBy("createdAt", "desc"),
+  );
 
-  emit();
-  return subscribeLocalDb(() => {
-    emit();
-  });
+  return onSnapshot(
+    q,
+    (snap) => {
+      onData(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Transaction, "id">) })));
+    },
+    (error) => onError?.(error),
+  );
+}
+
+export function subscribeDeposits(
+  onData: (rows: DepositRequest[]) => void,
+  userId?: string,
+  onError?: (error: unknown) => void,
+) {
+  const q = userId
+    ? query(depositsCol, where("userId", "==", userId), orderBy("createdAt", "desc"))
+    : query(depositsCol, orderBy("createdAt", "desc"));
+
+  return onSnapshot(
+    q,
+    (snap) => {
+      onData(
+        snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<DepositRequest, "id">) })),
+      );
+    },
+    (error) => onError?.(error),
+  );
 }
 
 export function subscribeWithdrawals(
   onData: (rows: WithdrawalRequest[]) => void,
   userId?: string,
+  onError?: (error: unknown) => void,
 ) {
-  const emit = () => {
-    const all = readLocalDb().withdrawals;
-    const rows = (userId ? all.filter((item) => item.userId === userId) : all).sort(
-      (a, b) => b.createdAt - a.createdAt,
-    );
-    onData(rows);
-  };
+  const q = userId
+    ? query(withdrawalsCol, where("userId", "==", userId), orderBy("createdAt", "desc"))
+    : query(withdrawalsCol, orderBy("createdAt", "desc"));
 
-  emit();
-  return subscribeLocalDb(() => {
-    emit();
-  });
+  return onSnapshot(
+    q,
+    (snap) => {
+      onData(
+        snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<WithdrawalRequest, "id">) })),
+      );
+    },
+    (error) => onError?.(error),
+  );
 }
 
 export async function reviewDeposit(input: {
@@ -97,48 +115,32 @@ export async function reviewDeposit(input: {
   adminId: string;
   status: "approved" | "rejected";
 }) {
-  const now = Date.now();
-  writeLocalDb((prev) => {
-    const deposits = prev.deposits.map((row) =>
-      row.id === input.requestId
-        ? { ...row, status: input.status, reviewedBy: input.adminId, reviewedAt: now }
-        : row,
+  await updateDoc(doc(depositsCol, input.requestId), {
+    status: input.status,
+    reviewedBy: input.adminId,
+    reviewedAt: Date.now(),
+  });
+
+  if (input.status === "approved") {
+    await setDoc(
+      doc(usersCol, input.userId),
+      {
+        balance: increment(input.amount),
+        updatedAt: Date.now(),
+      },
+      { merge: true },
     );
 
-    const wallet =
-      prev.wallets[input.userId] ??
-      ({ userId: input.userId, balance: 100_000, locked: 0, updatedAt: now } as const);
-
-    const approved = input.status === "approved";
-    const nextWallet = approved
-      ? { ...wallet, balance: wallet.balance + input.amount, updatedAt: now }
-      : wallet;
-
-    const transactions = approved
-      ? [
-          {
-            id: newId("tx"),
-            userId: input.userId,
-            type: "deposit",
-            amount: input.amount,
-            status: "approved",
-            createdAt: now,
-            note: "Deposit approved",
-          } as Transaction,
-          ...prev.transactions,
-        ]
-      : prev.transactions;
-
-    return {
-      ...prev,
-      deposits,
-      wallets: {
-        ...prev.wallets,
-        [input.userId]: nextWallet,
-      },
-      transactions,
-    };
-  });
+    await addDoc(transactionsCol, {
+      userId: input.userId,
+      type: "deposit",
+      amount: input.amount,
+      status: "approved",
+      createdAt: Date.now(),
+      createdAtServer: serverTimestamp(),
+      note: "Deposit approved",
+    });
+  }
 }
 
 export async function reviewWithdrawal(input: {
@@ -148,74 +150,48 @@ export async function reviewWithdrawal(input: {
   adminId: string;
   status: "approved" | "rejected";
 }) {
-  const now = Date.now();
-  writeLocalDb((prev) => {
-    const withdrawals = prev.withdrawals.map((row) =>
-      row.id === input.requestId
-        ? { ...row, status: input.status, reviewedBy: input.adminId, reviewedAt: now }
-        : row,
-    );
-
-    const wallet =
-      prev.wallets[input.userId] ??
-      ({ userId: input.userId, balance: 100_000, locked: 0, updatedAt: now } as const);
-
-    const approved = input.status === "approved";
-    const nextWallet = approved
-      ? { ...wallet, balance: wallet.balance - input.amount, updatedAt: now }
-      : wallet;
-
-    const transactions = approved
-      ? [
-          {
-            id: newId("tx"),
-            userId: input.userId,
-            type: "withdrawal",
-            amount: input.amount,
-            status: "approved",
-            createdAt: now,
-            note: "Withdrawal approved",
-          } as Transaction,
-          ...prev.transactions,
-        ]
-      : prev.transactions;
-
-    return {
-      ...prev,
-      withdrawals,
-      wallets: {
-        ...prev.wallets,
-        [input.userId]: nextWallet,
-      },
-      transactions,
-    };
+  await updateDoc(doc(withdrawalsCol, input.requestId), {
+    status: input.status,
+    reviewedBy: input.adminId,
+    reviewedAt: Date.now(),
   });
+
+  if (input.status === "approved") {
+    await updateDoc(doc(usersCol, input.userId), {
+      balance: increment(-input.amount),
+      updatedAt: Date.now(),
+    });
+
+    await addDoc(transactionsCol, {
+      userId: input.userId,
+      type: "withdrawal",
+      amount: input.amount,
+      status: "approved",
+      createdAt: Date.now(),
+      createdAtServer: serverTimestamp(),
+      note: "Withdrawal approved",
+    });
+  }
 }
 
 export async function adjustWallet(input: { userId: string; balance: number; locked?: number }) {
-  const now = Date.now();
-  writeLocalDb((prev) => ({
-    ...prev,
-    wallets: {
-      ...prev.wallets,
-      [input.userId]: {
-        userId: input.userId,
-        balance: input.balance,
-        locked: input.locked ?? 0,
-        updatedAt: now,
-      },
+  await setDoc(
+    doc(usersCol, input.userId),
+    {
+      balance: input.balance,
+      locked: input.locked ?? 0,
+      updatedAt: Date.now(),
     },
-    transactions: [
-      {
-        id: newId("tx"),
-        userId: input.userId,
-        type: "admin_adjustment",
-        amount: input.balance,
-        status: "completed",
-        createdAt: now,
-        note: "Admin wallet adjustment",
-      },
-      ...prev.transactions,
-    ],
-  }));
+    { merge: true },
+  );
+
+  await addDoc(transactionsCol, {
+    userId: input.userId,
+    type: "admin_adjustment",
+    amount: input.balance,
+    status: "completed",
+    createdAt: Date.now(),
+    createdAtServer: serverTimestamp(),
+    note: "Admin wallet adjustment",
+  });
 }

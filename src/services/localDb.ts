@@ -9,8 +9,37 @@ interface LocalDbState {
 }
 
 const STORAGE_KEY = "tradehub_local_db_v1";
+const ORDER_TTL_MS = 24 * 60 * 60 * 1000;
 const listeners = new Set<() => void>();
 let cache: LocalDbState | null = null;
+
+function pruneExpiredOrders(state: LocalDbState): LocalDbState {
+  const cutoff = Date.now() - ORDER_TTL_MS;
+  const expired = state.trades.filter((trade) => trade.timestamp < cutoff);
+  if (!expired.length) return state;
+
+  const activeTrades = state.trades.filter((trade) => trade.timestamp >= cutoff);
+  const wallets = { ...state.wallets };
+
+  expired.forEach((trade) => {
+    if (trade.status !== "open") return;
+    const wallet = wallets[trade.userId];
+    if (!wallet) return;
+    const principal = trade.entryPrice * trade.quantity;
+    wallets[trade.userId] = {
+      ...wallet,
+      balance: wallet.balance + principal,
+      locked: Math.max(0, wallet.locked - principal),
+      updatedAt: Date.now(),
+    };
+  });
+
+  return {
+    ...state,
+    wallets,
+    trades: activeTrades,
+  };
+}
 
 function defaultState(): LocalDbState {
   return {
@@ -41,13 +70,13 @@ function loadState(): LocalDbState {
 
   try {
     const parsed = JSON.parse(raw) as Partial<LocalDbState>;
-    cache = {
+    cache = pruneExpiredOrders({
       wallets: parsed.wallets ?? {},
       trades: parsed.trades ?? [],
       deposits: parsed.deposits ?? [],
       withdrawals: parsed.withdrawals ?? [],
       transactions: parsed.transactions ?? [],
-    };
+    });
     return cache;
   } catch {
     cache = defaultState();
@@ -56,9 +85,10 @@ function loadState(): LocalDbState {
 }
 
 function persist(state: LocalDbState) {
-  cache = state;
+  const next = pruneExpiredOrders(state);
+  cache = next;
   if (canUseStorage()) {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   }
   listeners.forEach((listener) => listener());
 }

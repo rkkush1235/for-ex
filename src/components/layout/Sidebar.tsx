@@ -69,8 +69,8 @@ function SidebarContent({
   return (
     <div className="flex h-full flex-col">
       <div>
-        <p className="text-xs uppercase tracking-[0.25em] text-zinc-400">TradeHub Pro</p>
-        <h2 className="mt-2 text-xl font-semibold">Indian Trading Desk</h2>
+        <p className="text-xs uppercase tracking-[0.25em] text-zinc-400">AstraTrade</p>
+        <h2 className="mt-2 text-xl font-semibold">Forex Markets</h2>
       </div>
 
       <nav className="mt-8 space-y-2">

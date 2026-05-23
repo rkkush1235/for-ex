@@ -36,7 +36,7 @@ export default function LoginPage() {
 
     try {
       await login(data.email, data.password);
-      router.replace("/dashboard");
+      router.replace("/markets");
     } catch (error) {
       if (error instanceof FirebaseError) {
         if (
@@ -103,7 +103,7 @@ export default function LoginPage() {
             }
             try {
               await loginWithGoogle();
-              router.replace("/dashboard");
+              router.replace("/markets");
             } catch (error) {
               if (error instanceof FirebaseError) {
                 setAuthError(`Google login failed: ${error.code}`);
