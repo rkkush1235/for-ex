@@ -1,0 +1,5 @@
+- Use Firebase as backend service (no traditional backend server).
+- Market APIs must be polled by shared admin poller and distributed through Firestore realtime listeners.
+- Keep UI dark, responsive, and trading-focused.
+- All monetary values are displayed in INR.
+- Protect all non-auth routes; `/admin` requires admin role.

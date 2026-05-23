@@ -1,0 +1,56 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { closeTrade, ensureWallet, placeTrade, subscribeAllTrades, subscribeTrades, subscribeWallet } from "@/services/tradingService";
+import { Trade, Wallet } from "@/types";
+
+export function useWallet(userId?: string) {
+  const [wallet, setWallet] = useState<Wallet | null>(null);
+
+  useEffect(() => {
+    if (!userId) return;
+    ensureWallet(userId)
+      .then(setWallet)
+      .catch(() => {
+        setWallet(null);
+      });
+    const unsub = subscribeWallet(userId, setWallet);
+    return () => unsub();
+  }, [userId]);
+
+  return wallet;
+}
+
+export function useTrades(userId?: string) {
+  const [trades, setTrades] = useState<Trade[]>([]);
+
+  useEffect(() => {
+    if (!userId) return;
+    const unsub = subscribeTrades(userId, setTrades);
+    return () => unsub();
+  }, [userId]);
+
+  return trades;
+}
+
+export function useAllTrades() {
+  const [trades, setTrades] = useState<Trade[]>([]);
+
+  useEffect(() => {
+    const unsub = subscribeAllTrades(setTrades);
+    return () => unsub();
+  }, []);
+
+  return trades;
+}
+
+export const usePlaceTrade = () =>
+  useMutation({
+    mutationFn: placeTrade,
+  });
+
+export const useCloseTrade = () =>
+  useMutation({
+    mutationFn: closeTrade,
+  });

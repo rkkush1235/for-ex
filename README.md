@@ -1,36 +1,135 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TradeHub Pro
 
-## Getting Started
+Professional real-time Forex, Crypto, Gold, and Silver trading platform built with Next.js App Router, TypeScript, Tailwind CSS, Firebase, Zustand, React Query, Framer Motion, React Hook Form, Zod, and TradingView Lightweight Charts.
 
-First, run the development server:
+## Core Stack
+
+- Next.js App Router
+- TypeScript + Tailwind CSS
+- Firebase Auth + Firestore + Storage
+- Zustand + React Query
+- React Hook Form + Zod
+- Framer Motion
+- Lightweight Charts
+
+## Architecture (No Traditional Backend)
+
+- **Shared polling model:** One admin poller acquires a Firestore lock at `system/marketPoller`.
+- **Polling frequency:** Every 5 seconds (`POLL_INTERVAL_MS`).
+- **Write once:** Poller writes merged quotes to `marketPrices/latest`.
+- **Fan-out realtime:** All users subscribe via Firestore `onSnapshot`.
+- **Result:** Minimal third-party API calls for up to 100 concurrent users.
+
+### Data Sources (Free APIs only)
+
+- Crypto: CoinGecko API
+- Forex: exchangerate.host (with free fallback source)
+- Metals: metals.live (with mock fallback)
+- All values are converted and displayed in INR ₹.
+
+## Features
+
+- Email/password + Google auth
+- Persistent auth session
+- Protected app routes and admin-only `/admin`
+- Live market cards and candlestick chart
+- Buy/sell trades with close and history
+- Wallet with balance, locked margin, transaction history
+- Deposit requests with screenshot upload
+- Withdrawal requests with admin approvals
+- Admin panel for users, wallets, prices, approvals, and trade actions
+
+## Pages
+
+- `/` Home
+- `/login` Login
+- `/signup` Signup
+- `/dashboard` Dashboard
+- `/markets` Markets
+- `/trading` Trading
+- `/trades` Trades
+- `/wallet` Wallet
+- `/deposit` Deposit
+- `/withdraw` Withdraw
+- `/profile` Profile
+- `/settings` Settings
+- `/admin` Admin panel
+
+## Folder Structure
+
+- `src/app` – Pages and routes
+- `src/components` – UI, layout, guards
+- `src/services` – Firebase market/trading/wallet/admin services
+- `src/hooks` – Realtime and mutation hooks
+- `src/store` – Zustand state
+- `src/utils` – Helpers/constants
+- `src/types` – Shared TypeScript models
+- `src/firebase` – Firebase client config and storage helper
+- `src/charts` – Lightweight charts integration
+
+## Setup
+
+1. Install deps:
+
+```bash
+npm install
+```
+
+2. Create env file:
+
+```bash
+cp .env.example .env.local
+```
+
+3. Fill Firebase and API keys in `.env.local`.
+
+4. Enable Firebase Auth providers:
+	- Email/Password
+	- Google
+
+5. Set admin role after signup:
+	- In Firestore `users/{uid}`, set `role` to `"admin"`.
+	- Admin user runs shared market polling for all users.
+
+6. Run dev server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+7. Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Firebase Configuration
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Firestore rules: `firestore.rules`
+- Storage rules: `storage.rules`
+- Firebase config mapping: `firebase.json`
 
-## Learn More
+Collections used:
 
-To learn more about Next.js, take a look at the following resources:
+- `users`
+- `wallets`
+- `trades`
+- `deposits`
+- `withdrawals`
+- `transactions`
+- `marketPrices`
+- `notifications`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Deploy rules with Firebase CLI:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+firebase deploy --only firestore:rules,storage
+```
 
-## Deploy on Vercel
+## Production Notes
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Mark admin users by setting `users/{uid}.role = "admin"` in Firestore.
+- Keep at least one admin session active for client-side shared poller operation.
+- Deploy to Vercel with all `NEXT_PUBLIC_*` env vars configured.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Build
+
+```bash
+npm run build
+```
