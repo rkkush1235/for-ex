@@ -2,6 +2,7 @@ import {
   addDoc,
   collection,
   doc,
+  getDoc,
   increment,
   onSnapshot,
   orderBy,
@@ -13,6 +14,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 import { DepositRequest, Transaction, WithdrawalRequest } from "@/types";
+import { sendSystemEmail } from "@/services/notificationService";
 
 const usersCol = collection(db, "users");
 const depositsCol = collection(db, "deposits");
@@ -141,6 +143,17 @@ export async function reviewDeposit(input: {
       note: "Deposit approved",
     });
   }
+
+  const userSnap = await getDoc(doc(usersCol, input.userId));
+  const userEmail = userSnap.data()?.email as string | undefined;
+  if (userEmail) {
+    await sendSystemEmail({
+      type: "deposit",
+      to: userEmail,
+      amount: input.amount,
+      status: input.status,
+    });
+  }
 }
 
 export async function reviewWithdrawal(input: {
@@ -170,6 +183,17 @@ export async function reviewWithdrawal(input: {
       createdAt: Date.now(),
       createdAtServer: serverTimestamp(),
       note: "Withdrawal approved",
+    });
+  }
+
+  const userSnap = await getDoc(doc(usersCol, input.userId));
+  const userEmail = userSnap.data()?.email as string | undefined;
+  if (userEmail) {
+    await sendSystemEmail({
+      type: "withdrawal",
+      to: userEmail,
+      amount: input.amount,
+      status: input.status,
     });
   }
 }

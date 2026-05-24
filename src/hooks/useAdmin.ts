@@ -1,8 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { subscribeUsers, subscribeAnalytics } from "@/services/adminService";
-import { AppUser, DashboardAnalytics } from "@/types";
+import { useMutation } from "@tanstack/react-query";
+import {
+  subscribeUsers,
+  subscribeAnalytics,
+  subscribeUsersByStatus,
+  subscribeActivityLogs,
+  updateUserStatus,
+} from "@/services/adminService";
+import { ActivityLog, AppUser, DashboardAnalytics, UserStatus } from "@/types";
 
 export function useUsers() {
   const [users, setUsers] = useState<AppUser[]>([]);
@@ -13,6 +20,19 @@ export function useUsers() {
     });
     return () => unsub();
   }, []);
+
+  return users;
+}
+
+export function useUsersByStatus(status: UserStatus) {
+  const [users, setUsers] = useState<AppUser[]>([]);
+
+  useEffect(() => {
+    const unsub = subscribeUsersByStatus(status, setUsers, () => {
+      setUsers([]);
+    });
+    return () => unsub();
+  }, [status]);
 
   return users;
 }
@@ -33,3 +53,21 @@ export function useAnalytics() {
 
   return data;
 }
+
+export function useActivityLogs() {
+  const [logs, setLogs] = useState<ActivityLog[]>([]);
+
+  useEffect(() => {
+    const unsub = subscribeActivityLogs(setLogs, () => {
+      setLogs([]);
+    });
+    return () => unsub();
+  }, []);
+
+  return logs;
+}
+
+export const useUpdateUserStatus = () =>
+  useMutation({
+    mutationFn: updateUserStatus,
+  });

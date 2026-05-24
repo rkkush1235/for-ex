@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/utils/format";
 import { useAppStore } from "@/store/useAppStore";
+import { useAuth } from "@/hooks/useAuth";
 import {
   BarChart3,
   CircleDollarSign,
@@ -26,17 +27,27 @@ const links = [
   { href: "/withdraw", label: "Withdraw", icon: HandCoins },
   { href: "/profile", label: "Profile", icon: User },
   { href: "/settings", label: "Settings", icon: Settings },
+];
+
+const adminLinks = [
   { href: "/admin", label: "Admin", icon: Shield },
+  { href: "/admin/users", label: "Admin Users", icon: User },
+  { href: "/admin/kyc", label: "Admin KYC", icon: Shield },
+  { href: "/admin/deposits", label: "Admin Deposits", icon: Landmark },
+  { href: "/admin/withdrawals", label: "Admin Withdrawals", icon: HandCoins },
+  { href: "/admin/settings", label: "Admin Settings", icon: Settings },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const { sidebarOpen, setSidebarOpen } = useAppStore();
+  const { appUser } = useAuth();
+  const navLinks = appUser?.role === "admin" ? adminLinks : links;
 
   return (
     <>
       <aside className="glass fixed left-4 top-4 z-40 hidden h-[calc(100vh-2rem)] w-64 p-4 md:block">
-        <SidebarContent pathname={pathname} />
+        <SidebarContent pathname={pathname} links={navLinks} />
       </aside>
 
       {sidebarOpen && (
@@ -53,7 +64,7 @@ export function Sidebar() {
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <SidebarContent pathname={pathname} onNavigate={() => setSidebarOpen(false)} />
+        <SidebarContent pathname={pathname} links={navLinks} onNavigate={() => setSidebarOpen(false)} />
       </aside>
     </>
   );
@@ -61,9 +72,11 @@ export function Sidebar() {
 
 function SidebarContent({
   pathname,
+  links,
   onNavigate,
 }: {
   pathname: string;
+  links: Array<{ href: string; label: string; icon: any }>;
   onNavigate?: () => void;
 }) {
   return (

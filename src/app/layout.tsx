@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "AstraTrade India",
-  description: "Realtime forex, crypto, and metals trading platform in INR",
+  description: "Realtime forex, crypto, and metals trading platform in USD",
 };
 
 export default function RootLayout({

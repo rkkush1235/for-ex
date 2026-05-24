@@ -274,3 +274,17 @@ export async function closeTrade(trade: Trade) {
     console.error("[Trading] Transaction log write failed after trade close", error);
   }
 }
+
+export async function adminUpdateTradeEntryPrice(input: {
+  tradeId: string;
+  entryPrice: number;
+}) {
+  if (!Number.isFinite(input.entryPrice) || input.entryPrice <= 0) {
+    throw new Error("Entry price must be greater than 0");
+  }
+
+  await updateDoc(doc(tradesCol, input.tradeId), {
+    entryPrice: input.entryPrice,
+    updatedAt: Date.now(),
+  });
+}

@@ -8,7 +8,8 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/hooks/useAuth";
 import { FirebaseError } from "firebase/app";
-import { isFirebaseConfigured } from "@/firebase/firebase";
+import { auth, db, isFirebaseConfigured } from "@/firebase/firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 const schema = z.object({
   email: z.string().email(),
@@ -27,6 +28,25 @@ export default function LoginPage() {
     formState: { errors, isSubmitting },
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
+  const handlePostLoginRoute = async () => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) {
+      router.replace("/login");
+      return;
+    }
+
+    const snap = await getDoc(doc(db, "users", uid));
+    const status = (snap.data()?.status as string | undefined) ?? "pending";
+    const role = (snap.data()?.role as string | undefined) ?? "user";
+
+    if (role === "admin" || status === "approved") {
+      router.replace(role === "admin" ? "/admin" : "/dashboard");
+      return;
+    }
+
+    router.replace("/approval-status");
+  };
+
   const onSubmit = async (data: FormData) => {
     setAuthError("");
     if (!isFirebaseConfigured) {
@@ -36,7 +56,7 @@ export default function LoginPage() {
 
     try {
       await login(data.email, data.password);
-      router.replace("/markets");
+      await handlePostLoginRoute();
     } catch (error) {
       if (error instanceof FirebaseError) {
         if (
@@ -103,7 +123,7 @@ export default function LoginPage() {
             }
             try {
               await loginWithGoogle();
-              router.replace("/markets");
+              await handlePostLoginRoute();
             } catch (error) {
               if (error instanceof FirebaseError) {
                 setAuthError(`Google login failed: ${error.code}`);

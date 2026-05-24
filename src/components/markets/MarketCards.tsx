@@ -54,7 +54,7 @@ export function MarketCards({ snapshot }: { snapshot: MarketSnapshot }) {
   const trades = useTrades(appUser?.uid);
   const placeTrade = usePlaceTrade();
   const rows = Object.values(snapshot.prices);
-  const ready = rows.some((item) => item.priceInr > 0);
+  const ready = rows.some((item) => item.priceUsd > 0 || item.priceInr > 0);
   const [draftOrder, setDraftOrder] = useState<DraftOrder | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [orderError, setOrderError] = useState<string | null>(null);
@@ -74,7 +74,9 @@ export function MarketCards({ snapshot }: { snapshot: MarketSnapshot }) {
     return Math.max(0, buyQty - sellQty);
   }, [draftOrder, trades]);
 
-  const draftPrice = draftOrder ? snapshot.prices[draftOrder.symbol]?.priceInr ?? 0 : 0;
+  const draftPrice = draftOrder
+    ? snapshot.prices[draftOrder.symbol]?.priceUsd ?? snapshot.prices[draftOrder.symbol]?.priceInr ?? 0
+    : 0;
   const estimated = Math.max(0, draftPrice * quantity);
 
   const tvSymbol = useMemo(() => {
@@ -155,7 +157,7 @@ export function MarketCards({ snapshot }: { snapshot: MarketSnapshot }) {
             transition={{ delay: idx * 0.03 }}
           >
             <p className="text-xs text-zinc-400">{item.symbol}</p>
-            <h3 className="mt-2 text-lg font-semibold">{formatCurrency(item.priceInr)}</h3>
+            <h3 className="mt-2 text-lg font-semibold">{formatCurrency(item.priceUsd ?? item.priceInr)}</h3>
             <p className={`mt-1 text-xs ${up ? "badge-up" : "badge-down"}`}>
               {formatPercent(item.change24h)}
             </p>

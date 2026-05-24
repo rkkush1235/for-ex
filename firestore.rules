@@ -13,7 +13,7 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isAuth() && (request.auth.uid == userId || isAdmin());
-      allow create: if isAuth() && request.auth.uid == userId;
+      allow create: if isAuth() && request.auth.uid == userId && request.resource.data.role == 'user';
       allow update: if isAdmin() || (
         isAuth() &&
         request.auth.uid == userId &&
@@ -23,6 +23,10 @@ service cloud.firestore {
         resource.data.createdAt == request.resource.data.createdAt
       );
       allow delete: if isAdmin();
+    }
+
+    match /activityLogs/{logId} {
+      allow read, write: if isAdmin();
     }
 
     match /trades/{tradeId} {

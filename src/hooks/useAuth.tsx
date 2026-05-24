@@ -20,16 +20,22 @@ import { auth, db, ensureAuthPersistence, googleProvider } from "@/firebase/fire
 import { AppUser } from "@/types";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 
+export interface SignupPayload {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string;
+  password: string;
+  aadhaarNumber: string;
+  panNumber: string;
+}
+
 interface AuthContextShape {
   firebaseUser: User | null;
   appUser: AppUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signup: (
-    email: string,
-    password: string,
-    displayName: string,
-  ) => Promise<void>;
+  signup: (payload: SignupPayload) => Promise<string>;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -48,12 +54,27 @@ async function upsertUserProfile(user: User, displayNameOverride?: string) {
     uid: user.uid,
     email: user.email ?? "",
     displayName: displayNameOverride ?? user.displayName ?? "Trader",
+    firstName: "",
+    lastName: "",
+    phone: "",
+    aadhaarNumber: "",
+    panNumber: "",
+    aadhaarFrontUrl: "",
+    aadhaarBackUrl: "",
+    selfieUrl: "",
+    aadhaarFrontBase64: "",
+    aadhaarBackBase64: "",
+    selfieBase64: "",
     role: "user" as const,
+    status: "pending" as const,
+    accountId: "",
     balance: 0,
     locked: 0,
-    currency: "INR",
-    portfolio: [],
-    transactions: [],
+    currency: "USD",
+    deposits: 0,
+    withdrawals: 0,
+    kycSubmittedAt: Date.now(),
+    rejectionReason: "",
     updatedAt: Date.now(),
     createdAt: Date.now(),
     createdAtServer: serverTimestamp(),
@@ -77,10 +98,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       setFirebaseUser(user);
-      setLoading(false);
+
+      if (typeof document !== "undefined") {
+        if (user?.uid) {
+          document.cookie = `auth_uid=${user.uid}; path=/; max-age=2592000; samesite=lax`;
+        } else {
+          document.cookie = "auth_uid=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        }
+      }
 
       if (!user) {
         setAppUser(null);
+        setLoading(false);
         return;
       }
 
@@ -104,8 +133,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: user.email ?? "",
           displayName: user.displayName ?? "Trader",
           role: "user",
+          status: "pending",
           createdAt: Date.now(),
         });
+      } finally {
+        setLoading(false);
       }
     });
 
@@ -123,10 +155,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await ensureAuthPersistence();
         await signInWithEmailAndPassword(auth, email, password);
       },
-      signup: async (email, password, displayName) => {
+      signup: async (payload) => {
         await ensureAuthPersistence();
-        const cred = await createUserWithEmailAndPassword(auth, email, password);
-        await upsertUserProfile(cred.user, displayName);
+        const cred = await createUserWithEmailAndPassword(auth, payload.email, payload.password);
+        const userRef = doc(db, "users", cred.user.uid);
+        const now = Date.now();
+        await setDoc(
+          userRef,
+          {
+            uid: cred.user.uid,
+            email: payload.email,
+            displayName: `${payload.firstName} ${payload.lastName}`.trim(),
+            firstName: payload.firstName,
+            lastName: payload.lastName,
+            phone: payload.phone,
+            aadhaarNumber: payload.aadhaarNumber,
+            panNumber: payload.panNumber,
+            aadhaarFrontUrl: "",
+            aadhaarBackUrl: "",
+            selfieUrl: "",
+            aadhaarFrontBase64: "",
+            aadhaarBackBase64: "",
+            selfieBase64: "",
+            role: "user",
+            status: "pending",
+            accountId: "",
+            balance: 0,
+            locked: 0,
+            currency: "USD",
+            deposits: 0,
+            withdrawals: 0,
+            kycSubmittedAt: now,
+            rejectionReason: "",
+            createdAt: now,
+            createdAtServer: serverTimestamp(),
+            updatedAt: now,
+          },
+          { merge: true },
+        );
+
+        return cred.user.uid;
       },
       loginWithGoogle: async () => {
         await ensureAuthPersistence();

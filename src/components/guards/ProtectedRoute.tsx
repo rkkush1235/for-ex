@@ -2,12 +2,13 @@
 
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { firebaseUser, loading } = useAuth();
+  const { firebaseUser, appUser, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -19,6 +20,16 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
       router.replace("/login");
     }
   }, [loading, firebaseUser, router]);
+
+  useEffect(() => {
+    if (loading || !appUser) return;
+    const isAdminRoute = pathname.startsWith("/admin");
+    const isAdmin = appUser.role === "admin";
+
+    if (!isAdminRoute && !isAdmin && appUser.status !== "approved") {
+      router.replace("/approval-status");
+    }
+  }, [loading, appUser, pathname, router]);
 
   if (!mounted || loading) {
     return (
@@ -37,6 +48,22 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
           className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-zinc-900"
         >
           Go to Login
+        </Link>
+      </div>
+    );
+  }
+
+  const isAdminRoute = pathname.startsWith("/admin");
+  const isAdmin = appUser?.role === "admin";
+  if (!isAdminRoute && !isAdmin && appUser && appUser.status !== "approved") {
+    return (
+      <div className="mx-auto flex min-h-[60vh] w-full max-w-xl flex-col items-center justify-center gap-3 px-4 text-center">
+        <p className="text-sm text-zinc-300">Waiting for admin approval. Your KYC is under review.</p>
+        <Link
+          href="/approval-status"
+          className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-zinc-900"
+        >
+          View Status
         </Link>
       </div>
     );

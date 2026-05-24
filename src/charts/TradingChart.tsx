@@ -60,14 +60,14 @@ export function TradingChart() {
   const snapshot = useMarketData();
 
   const effectiveSymbol = useMemo(() => {
-    const selectedPrice = snapshot.prices[selectedSymbol]?.priceInr ?? 0;
+    const selectedPrice = snapshot.prices[selectedSymbol]?.priceUsd ?? snapshot.prices[selectedSymbol]?.priceInr ?? 0;
     if (selectedPrice > 0) return selectedSymbol;
-    const fallback = Object.values(snapshot.prices).find((item) => item.priceInr > 0);
+    const fallback = Object.values(snapshot.prices).find((item) => (item.priceUsd ?? item.priceInr) > 0);
     return fallback?.symbol ?? selectedSymbol;
   }, [snapshot.prices, selectedSymbol]);
 
   const category = snapshot.prices[effectiveSymbol]?.category;
-  const cardPriceInr = snapshot.prices[effectiveSymbol]?.priceInr ?? 0;
+  const cardPriceInr = snapshot.prices[effectiveSymbol]?.priceUsd ?? snapshot.prices[effectiveSymbol]?.priceInr ?? 0;
   const cardChange = snapshot.prices[effectiveSymbol]?.change24h ?? 0;
   const tvSymbol = mapToTradingViewSymbol(effectiveSymbol, category);
 

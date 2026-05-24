@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { AppShell } from "@/components/layout/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { useCreateWithdrawalRequest, useWithdrawals } from "@/hooks/useWalletRequests";
+import { formatCurrency } from "@/utils/format";
 
 const schema = z.object({
   amount: z.number().min(100),
@@ -75,7 +76,7 @@ export default function WithdrawPage() {
         <div className="space-y-2 text-sm">
           {rows.map((row) => (
             <div key={row.id} className="rounded-lg border border-zinc-700/70 p-3">
-              ₹{row.amount} • {row.status} • {new Date(row.createdAt).toLocaleString()}
+              {formatCurrency(row.amount)} • {row.status} • {new Date(row.createdAt).toLocaleString()}
             </div>
           ))}
         </div>

@@ -1,8 +1,8 @@
-export const formatCurrency = (value: number, currency = "INR") =>
-  new Intl.NumberFormat("en-IN", {
+export const formatCurrency = (value: number, currency = "USD") =>
+  new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
-    maximumFractionDigits: currency === "INR" ? 2 : 4,
+    maximumFractionDigits: 2,
   }).format(Number.isFinite(value) ? value : 0);
 
 export const formatPercent = (value: number) => `${value.toFixed(2)}%`;

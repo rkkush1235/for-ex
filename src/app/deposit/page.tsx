@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCreateDepositRequest, useDeposits } from "@/hooks/useWalletRequests";
 import { ADMIN_BANK_DETAILS, ADMIN_UPI_ID } from "@/utils/constants";
 import { uploadDepositScreenshot } from "@/firebase/storage";
+import { formatCurrency } from "@/utils/format";
 
 const schema = z.object({
   amount: z.number().min(100),
@@ -28,7 +29,7 @@ export default function DepositPage() {
     defaultValues: { upiId: "" },
   });
 
-  const qrPayload = `upi://pay?pa=${encodeURIComponent(ADMIN_UPI_ID)}&pn=${encodeURIComponent("Forex Admin")}&cu=INR`;
+  const qrPayload = `upi://pay?pa=${encodeURIComponent(ADMIN_UPI_ID)}&pn=${encodeURIComponent("Forex Admin")}&cu=USD`;
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(qrPayload)}`;
 
   const onSubmit = async (data: FormData) => {
@@ -98,7 +99,7 @@ export default function DepositPage() {
         <div className="space-y-2 text-sm">
           {rows.map((row) => (
             <div key={row.id} className="rounded-lg border border-zinc-700/70 p-3">
-              ₹{row.amount} • {row.status} • {new Date(row.createdAt).toLocaleString()}
+              {formatCurrency(row.amount)} • {row.status} • {new Date(row.createdAt).toLocaleString()}
             </div>
           ))}
         </div>

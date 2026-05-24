@@ -1,10 +1,34 @@
 export type UserRole = "user" | "admin";
+export type UserStatus = "pending" | "approved" | "rejected" | "suspended" | "banned";
 
 export interface AppUser {
   uid: string;
   email: string;
   displayName: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  aadhaarNumber?: string;
+  panNumber?: string;
+  aadhaarFrontUrl?: string;
+  aadhaarBackUrl?: string;
+  selfieUrl?: string;
+  aadhaarFrontBase64?: string;
+  aadhaarBackBase64?: string;
+  selfieBase64?: string;
   role: UserRole;
+  status?: UserStatus;
+  accountId?: string;
+  currency?: string;
+  balance?: number;
+  locked?: number;
+  deposits?: number;
+  withdrawals?: number;
+  approvedAt?: number;
+  approvedBy?: string;
+  rejectionReason?: string;
+  kycSubmittedAt?: number;
+  updatedAt?: number;
   createdAt: number;
 }
 
@@ -106,4 +130,14 @@ export interface DashboardAnalytics {
   pendingDeposits: number;
   pendingWithdrawals: number;
   marketUpdatedAt: number;
+}
+
+export interface ActivityLog {
+  id: string;
+  userId: string;
+  action: string;
+  actorId: string;
+  actorRole: UserRole;
+  message: string;
+  createdAt: number;
 }

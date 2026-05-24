@@ -9,7 +9,7 @@ export default function Home() {
       </h1>
       <p className="mt-4 max-w-3xl text-zinc-300">
         Built on Firebase with shared market polling, realtime snapshots, professional trading UI,
-        and full wallet + admin workflows for Indian users in INR ₹.
+        and full wallet + admin workflows with USD-denominated pricing and payments.
       </p>
       <div className="mt-8 flex flex-wrap gap-3">
         <Link
@@ -21,9 +21,9 @@ export default function Home() {
         <Link href="/login" className="rounded-xl border border-zinc-700 px-5 py-3">
           Login
         </Link>
-        <Link href="/markets" className="rounded-xl border border-zinc-700 px-5 py-3">
+        {/* <Link href="/markets" className="rounded-xl border border-zinc-700 px-5 py-3">
           Explore Markets
-        </Link>
+        </Link> */}
       </div>
     </div>
   );

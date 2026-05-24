@@ -10,7 +10,7 @@ export function TradesTable({
 }: {
   trades: Trade[];
   onClose?: (trade: Trade) => void;
-  priceMap?: Record<string, { priceInr: number }>;
+  priceMap?: Record<string, { priceInr: number; priceUsd?: number }>;
 }) {
   return (
     <div className="glass overflow-x-auto">
@@ -31,7 +31,7 @@ export function TradesTable({
           {trades.map((trade) => {
             const open = trade.status === "open";
             const currentPrice = open
-              ? (priceMap?.[trade.asset]?.priceInr ?? trade.currentPrice)
+              ? (priceMap?.[trade.asset]?.priceUsd ?? priceMap?.[trade.asset]?.priceInr ?? trade.currentPrice)
               : trade.currentPrice;
             const pnlPerUnit =
               trade.type === "buy"
