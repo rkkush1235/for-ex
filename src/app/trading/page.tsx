@@ -11,6 +11,7 @@ import { useCloseTrade, usePlaceTrade, useTrades } from "@/hooks/useTrading";
 import { TradesTable } from "@/components/trades/TradesTable";
 import { useMarketData } from "@/hooks/useMarketData";
 import { TradingChart } from "@/charts/TradingChart";
+import { getMarketStatus, inferMarketCategory } from "@/utils/marketHours";
 
 
 const schema = z.object({
@@ -23,16 +24,20 @@ type FormData = z.infer<typeof schema>;
 
 export default function TradingPage() {
   const { appUser } = useAuth();
-  const { selectedAsset, setSelectedAsset } = useAppStore();
+  const { selectedAsset: storeSelectedAsset, setSelectedAsset } = useAppStore();
   const market = useMarketData();
   const trades = useTrades(appUser?.uid);
   const place = usePlaceTrade();
   const close = useCloseTrade();
 
-  const { register, handleSubmit, formState } = useForm<FormData>({
+  const { register, handleSubmit, watch, formState } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { asset: selectedAsset, type: "buy", quantity: 1 },
+    defaultValues: { asset: storeSelectedAsset, type: "buy", quantity: 1 },
   });
+
+  const activeAsset = watch("asset") ?? storeSelectedAsset;
+  const activeCategory = market.prices[activeAsset]?.category ?? inferMarketCategory(activeAsset);
+  const marketStatus = getMarketStatus(activeCategory);
 
   const onSubmit = async (data: FormData) => {
     if (!appUser?.uid) return;
@@ -67,12 +72,15 @@ export default function TradingPage() {
           className="rounded-lg border border-zinc-700 bg-zinc-900/70 px-3 py-2"
         />
         <button
-          disabled={formState.isSubmitting}
+          disabled={formState.isSubmitting || !marketStatus.isOpen}
           className="rounded-lg bg-emerald-500 px-3 py-2 font-medium text-zinc-900"
           type="submit"
         >
-          {formState.isSubmitting ? "Placing..." : "Place Trade"}
+          {!marketStatus.isOpen ? "Market Closed" : formState.isSubmitting ? "Placing..." : "Place Trade"}
         </button>
+        {!marketStatus.isOpen ? (
+          <p className="md:col-span-4 text-xs text-red-400">{marketStatus.message}</p>
+        ) : null}
       </form>
 
       <TradingChart />

@@ -44,6 +44,9 @@ export interface Trade {
   timestamp: number;
   closedAt?: number;
   userId: string;
+  userDisplayName?: string;
+  userEmail?: string;
+  userSearchKey?: string;
 }
 
 export interface Wallet {

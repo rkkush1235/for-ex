@@ -17,6 +17,7 @@ import {
 import { db } from "@/firebase/firebase";
 import { getCurrentMarketSnapshot, refreshMarketSnapshot } from "@/services/marketFeed";
 import { Trade, Wallet } from "@/types";
+import { getMarketStatus, inferMarketCategory } from "@/utils/marketHours";
 
 const usersCol = collection(db, "users");
 const tradesCol = collection(db, "trades");
@@ -91,13 +92,13 @@ export function subscribeTrades(
   onData: (trades: Trade[]) => void,
   onError?: (error: unknown) => void,
 ) {
-  const q = query(tradesCol, where("userId", "==", userId), orderBy("timestamp", "desc"));
+  const q = query(tradesCol, where("userId", "==", userId));
   return onSnapshot(
     q,
     (snap) => {
-      onData(
-        snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Trade, "id">) })) as Trade[],
-      );
+      const rows = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Trade, "id">) })) as Trade[];
+      rows.sort((a, b) => b.timestamp - a.timestamp);
+      onData(rows);
     },
     (error) => onError?.(error),
   );
@@ -120,15 +121,12 @@ export function subscribeAllTrades(
 }
 
 async function getAvailableHoldingQty(userId: string, asset: string) {
-  const q = query(
-    tradesCol,
-    where("userId", "==", userId),
-    where("asset", "==", asset),
-    where("status", "==", "open"),
-  );
+  const q = query(tradesCol, where("userId", "==", userId));
   const snap = await getDocs(q);
 
-  const rows = snap.docs.map((d) => d.data() as Omit<Trade, "id">);
+  const rows = snap.docs
+    .map((d) => d.data() as Omit<Trade, "id">)
+    .filter((trade) => trade.asset === asset && trade.status === "open");
   const buyQty = rows.filter((trade) => trade.type === "buy").reduce((acc, trade) => acc + trade.quantity, 0);
   const sellQty = rows.filter((trade) => trade.type === "sell").reduce((acc, trade) => acc + trade.quantity, 0);
 
@@ -142,6 +140,13 @@ export async function placeTrade(input: {
   quantity: number;
 }) {
   const { userId, asset, type, quantity } = input;
+  const snapshot = getCurrentMarketSnapshot();
+  const category = snapshot.prices[asset]?.category ?? inferMarketCategory(asset);
+  const marketStatus = getMarketStatus(category);
+  if (!marketStatus.isOpen) {
+    throw new Error(marketStatus.message);
+  }
+
   const currentPrice = await latestPrice(asset);
   if (!currentPrice || currentPrice <= 0) {
     throw new Error("Live price unavailable for selected asset");
@@ -149,6 +154,16 @@ export async function placeTrade(input: {
 
   const required = quantity * currentPrice;
   await ensureWallet(userId);
+  const userRef = doc(usersCol, userId);
+  const userProfileSnap = await getDoc(userRef);
+  if (!userProfileSnap.exists()) {
+    throw new Error("User profile not found");
+  }
+
+  const userProfile = userProfileSnap.data() as { displayName?: string; email?: string };
+  const userDisplayName = userProfile.displayName ?? "Trader";
+  const userEmail = userProfile.email ?? "";
+  const userSearchKey = `${userDisplayName} ${userEmail} ${userId}`.trim().toLowerCase();
 
   if (type === "sell") {
     const availableQty = await getAvailableHoldingQty(userId, asset);
@@ -157,7 +172,6 @@ export async function placeTrade(input: {
     }
   }
 
-  const userRef = doc(usersCol, userId);
   await runTransaction(db, async (tx) => {
     const userSnap = await tx.get(userRef);
     if (!userSnap.exists()) {
@@ -189,6 +203,9 @@ export async function placeTrade(input: {
 
   await addDoc(tradesCol, {
     userId,
+    userDisplayName,
+    userEmail,
+    userSearchKey,
     asset,
     type,
     quantity,
@@ -200,15 +217,19 @@ export async function placeTrade(input: {
     createdAtServer: serverTimestamp(),
   });
 
-  await addDoc(transactionsCol, {
-    userId,
-    type: "trade_pnl",
-    amount: -required,
-    status: "completed",
-    createdAt: Date.now(),
-    createdAtServer: serverTimestamp(),
-    note: `Margin blocked for ${type.toUpperCase()} ${asset}`,
-  });
+  try {
+    await addDoc(transactionsCol, {
+      userId,
+      type: "trade_pnl",
+      amount: -required,
+      status: "completed",
+      createdAt: Date.now(),
+      createdAtServer: serverTimestamp(),
+      note: `Margin blocked for ${type.toUpperCase()} ${asset}`,
+    });
+  } catch (error) {
+    console.error("[Trading] Transaction log write failed after trade placement", error);
+  }
 }
 
 export async function closeTrade(trade: Trade) {
@@ -239,13 +260,17 @@ export async function closeTrade(trade: Trade) {
     updatedAt: now,
   });
 
-  await addDoc(transactionsCol, {
-    userId: trade.userId,
-    type: "trade_pnl",
-    amount: principal + pnl,
-    status: "completed",
-    createdAt: now,
-    createdAtServer: serverTimestamp(),
-    note: `Trade closed ${trade.asset} (${trade.type.toUpperCase()}) P/L ${pnl.toFixed(2)}`,
-  });
+  try {
+    await addDoc(transactionsCol, {
+      userId: trade.userId,
+      type: "trade_pnl",
+      amount: principal + pnl,
+      status: "completed",
+      createdAt: now,
+      createdAtServer: serverTimestamp(),
+      note: `Trade closed ${trade.asset} (${trade.type.toUpperCase()}) P/L ${pnl.toFixed(2)}`,
+    });
+  } catch (error) {
+    console.error("[Trading] Transaction log write failed after trade close", error);
+  }
 }

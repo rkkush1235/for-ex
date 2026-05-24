@@ -7,6 +7,7 @@ import { formatCurrency, formatPercent } from "@/utils/format";
 import { useAppStore } from "@/store/useAppStore";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlaceTrade, useTrades } from "@/hooks/useTrading";
+import { getMarketStatus } from "@/utils/marketHours";
 
 function normalizeSymbol(symbol: string) {
   return symbol.replace(/\//g, "").trim().toUpperCase();
@@ -82,6 +83,13 @@ export function MarketCards({ snapshot }: { snapshot: MarketSnapshot }) {
     return mapToTradingViewSymbol(draftOrder.symbol, category);
   }, [draftOrder, snapshot.prices]);
 
+  const draftMarketStatus = useMemo(() => {
+    if (!draftOrder) return null;
+    const category = snapshot.prices[draftOrder.symbol]?.category;
+    if (!category) return null;
+    return getMarketStatus(category);
+  }, [draftOrder, snapshot.prices]);
+
   const openOrderModal = (symbol: string, side: "buy" | "sell") => {
     setSelectedSymbol(symbol);
     setSelectedOrderType(side);
@@ -93,10 +101,6 @@ export function MarketCards({ snapshot }: { snapshot: MarketSnapshot }) {
   const submitOrder = async () => {
     if (!appUser?.uid || !draftOrder) return;
     setOrderError(null);
-    if (draftOrder.side === "sell" && holdingQty < quantity) {
-      setOrderError(`You can only sell available holding. Available: ${holdingQty.toFixed(4)}`);
-      return;
-    }
 
     try {
       setConfirmingOrder(true);
@@ -137,6 +141,7 @@ export function MarketCards({ snapshot }: { snapshot: MarketSnapshot }) {
       {rows.map((item, idx) => {
         const up = item.change24h >= 0;
         const selected = selectedSymbol === item.symbol;
+        const status = getMarketStatus(item.category);
         return (
           <motion.div
             key={item.symbol}
@@ -154,6 +159,9 @@ export function MarketCards({ snapshot }: { snapshot: MarketSnapshot }) {
             <p className={`mt-1 text-xs ${up ? "badge-up" : "badge-down"}`}>
               {formatPercent(item.change24h)}
             </p>
+            {!status.isOpen ? (
+              <p className="mt-1 text-[11px] text-red-400">Market Closed</p>
+            ) : null}
 
             {selected ? (
               <div className="mt-3 flex gap-2">
@@ -232,7 +240,7 @@ export function MarketCards({ snapshot }: { snapshot: MarketSnapshot }) {
               />
               <button
                 type="button"
-                disabled={confirmingOrder || (draftOrder.side === "sell" && holdingQty < quantity)}
+                disabled={confirmingOrder || draftMarketStatus?.isOpen === false}
                 onClick={submitOrder}
                 className={`rounded-lg px-4 py-2 text-sm font-semibold ${
                   draftOrder.side === "buy"
@@ -240,7 +248,9 @@ export function MarketCards({ snapshot }: { snapshot: MarketSnapshot }) {
                     : "bg-red-500 text-white"
                 } disabled:opacity-60`}
               >
-                {confirmingOrder
+                {draftMarketStatus?.isOpen === false
+                  ? "Market Closed"
+                  : confirmingOrder
                   ? "Placing..."
                   : draftOrder.side === "buy"
                     ? "Confirm Buy"
@@ -248,10 +258,8 @@ export function MarketCards({ snapshot }: { snapshot: MarketSnapshot }) {
               </button>
             </div>
 
-            {draftOrder.side === "sell" && holdingQty < quantity ? (
-              <p className="text-xs text-red-400">
-                Sell allowed only if you already hold this asset.
-              </p>
+            {draftMarketStatus && !draftMarketStatus.isOpen ? (
+              <p className="text-xs text-red-400">{draftMarketStatus.message}</p>
             ) : null}
             {orderError ? <p className="text-xs text-red-400">{orderError}</p> : null}
           </div>

@@ -195,7 +195,9 @@ export default function AdminPage() {
           <div className="space-y-2">
             {trades.slice(0, 40).map((trade) => (
               <div key={trade.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-700/80 p-3 text-sm">
-                <span>{trade.asset} • {trade.type} • {trade.status} • {trade.userId.slice(0, 8)}</span>
+                <span>
+                  {trade.asset} • {trade.type} • {trade.status} • {trade.userDisplayName ?? trade.userEmail ?? trade.userId.slice(0, 8)}
+                </span>
                 {trade.status === "open" ? (
                   <button className="rounded-md bg-zinc-800 px-2 py-1 text-xs" onClick={() => closeTrade(trade)}>
                     Force Close
