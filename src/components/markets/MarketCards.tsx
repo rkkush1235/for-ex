@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import { MarketSnapshot } from "@/types";
-import { formatCurrency, formatPercent } from "@/utils/format";
+import { formatCurrency, formatPercent, safeNumber } from "@/utils/format";
 import { useAppStore } from "@/store/useAppStore";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlaceTrade, useTrades } from "@/hooks/useTrading";
@@ -54,7 +54,8 @@ export function MarketCards({ snapshot }: { snapshot: MarketSnapshot }) {
   const trades = useTrades(appUser?.uid);
   const placeTrade = usePlaceTrade();
   const rows = Object.values(snapshot.prices);
-  const ready = rows.some((item) => item.priceUsd > 0 || item.priceInr > 0);
+  // Fix: cards must be ready only on USD feed values.
+  const ready = rows.some((item) => safeNumber(item.priceUsd) > 0);
   const [draftOrder, setDraftOrder] = useState<DraftOrder | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [orderError, setOrderError] = useState<string | null>(null);
@@ -75,9 +76,9 @@ export function MarketCards({ snapshot }: { snapshot: MarketSnapshot }) {
   }, [draftOrder, trades]);
 
   const draftPrice = draftOrder
-    ? snapshot.prices[draftOrder.symbol]?.priceUsd ?? snapshot.prices[draftOrder.symbol]?.priceInr ?? 0
+    ? safeNumber(snapshot.prices[draftOrder.symbol]?.priceUsd)
     : 0;
-  const estimated = Math.max(0, draftPrice * quantity);
+  const estimated = safeNumber(Math.max(0, draftPrice * safeNumber(quantity, 0, 1e6)));
 
   const tvSymbol = useMemo(() => {
     if (!draftOrder) return "";
@@ -157,9 +158,9 @@ export function MarketCards({ snapshot }: { snapshot: MarketSnapshot }) {
             transition={{ delay: idx * 0.03 }}
           >
             <p className="text-xs text-zinc-400">{item.symbol}</p>
-            <h3 className="mt-2 text-lg font-semibold">{formatCurrency(item.priceUsd ?? item.priceInr)}</h3>
+            <h3 className="mt-2 text-lg font-semibold">{formatCurrency(safeNumber(item.priceUsd))}</h3>
             <p className={`mt-1 text-xs ${up ? "badge-up" : "badge-down"}`}>
-              {formatPercent(item.change24h)}
+              {formatPercent(safeNumber(item.change24h))}
             </p>
             {!status.isOpen ? (
               <p className="mt-1 text-[11px] text-red-400">Market Closed</p>

@@ -1,7 +1,7 @@
 "use client";
 
 import { Trade } from "@/types";
-import { formatCurrency } from "@/utils/format";
+import { formatCurrency, safeNumber } from "@/utils/format";
 
 export function TradesTable({
   trades,
@@ -10,7 +10,7 @@ export function TradesTable({
 }: {
   trades: Trade[];
   onClose?: (trade: Trade) => void;
-  priceMap?: Record<string, { priceInr: number; priceUsd?: number }>;
+  priceMap?: Record<string, { priceUsd?: number }>;
 }) {
   return (
     <div className="glass overflow-x-auto">
@@ -30,21 +30,27 @@ export function TradesTable({
         <tbody>
           {trades.map((trade) => {
             const open = trade.status === "open";
+            // Fix: current and entry must use same USD source for accurate PnL.
             const currentPrice = open
-              ? (priceMap?.[trade.asset]?.priceUsd ?? priceMap?.[trade.asset]?.priceInr ?? trade.currentPrice)
-              : trade.currentPrice;
-            const pnlPerUnit =
-              trade.type === "buy"
-                ? currentPrice - trade.entryPrice
-                : trade.entryPrice - currentPrice;
-            const livePnl = open ? pnlPerUnit * trade.quantity : trade.pnl;
+              ? safeNumber(priceMap?.[trade.asset]?.priceUsd ?? trade.currentPrice)
+              : safeNumber(trade.currentPrice);
+            const entryPrice = safeNumber(trade.entryPrice);
+            const qty = safeNumber(trade.quantity, 0, 1e6);
+
+            // Fix: canonical formula -> PnL = (currentPrice - entryPrice) * quantity.
+            const basePnl = safeNumber((currentPrice - entryPrice) * qty, 0, 1e12);
+            const livePnl = open
+              ? trade.type === "sell"
+                ? safeNumber(-basePnl, 0, 1e12)
+                : basePnl
+              : safeNumber(trade.pnl);
 
             return (
               <tr key={trade.id} className="border-t border-zinc-800/80">
                 <td className="p-3">{trade.asset}</td>
                 <td className="p-3 uppercase text-zinc-300">{trade.type}</td>
-                <td className="p-3">{trade.quantity}</td>
-                <td className="p-3">{formatCurrency(trade.entryPrice)}</td>
+                <td className="p-3">{qty.toFixed(4)}</td>
+                <td className="p-3">{formatCurrency(entryPrice)}</td>
                 <td className="p-3">{formatCurrency(currentPrice)}</td>
                 <td className={`p-3 ${livePnl >= 0 ? "badge-up" : "badge-down"}`}>
                   {formatCurrency(livePnl)}

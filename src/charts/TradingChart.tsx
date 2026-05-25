@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useMarketData } from "@/hooks/useMarketData";
 import { useAppStore } from "@/store/useAppStore";
-import { formatCurrency, formatPercent } from "@/utils/format";
+import { formatCurrency, formatPercent, safeNumber } from "@/utils/format";
 
 function normalizeSymbol(symbol: string) {
   return symbol.replace(/\//g, "").trim().toUpperCase();
@@ -60,15 +60,16 @@ export function TradingChart() {
   const snapshot = useMarketData();
 
   const effectiveSymbol = useMemo(() => {
-    const selectedPrice = snapshot.prices[selectedSymbol]?.priceUsd ?? snapshot.prices[selectedSymbol]?.priceInr ?? 0;
+    // Fix: USD-only source selection for chart header values.
+    const selectedPrice = safeNumber(snapshot.prices[selectedSymbol]?.priceUsd);
     if (selectedPrice > 0) return selectedSymbol;
-    const fallback = Object.values(snapshot.prices).find((item) => (item.priceUsd ?? item.priceInr) > 0);
+    const fallback = Object.values(snapshot.prices).find((item) => safeNumber(item.priceUsd) > 0);
     return fallback?.symbol ?? selectedSymbol;
   }, [snapshot.prices, selectedSymbol]);
 
   const category = snapshot.prices[effectiveSymbol]?.category;
-  const cardPriceInr = snapshot.prices[effectiveSymbol]?.priceUsd ?? snapshot.prices[effectiveSymbol]?.priceInr ?? 0;
-  const cardChange = snapshot.prices[effectiveSymbol]?.change24h ?? 0;
+  const cardPriceUsd = safeNumber(snapshot.prices[effectiveSymbol]?.priceUsd);
+  const cardChange = safeNumber(snapshot.prices[effectiveSymbol]?.change24h);
   const tvSymbol = mapToTradingViewSymbol(effectiveSymbol, category);
 
   const embedSrc = useMemo(() => {
@@ -99,7 +100,7 @@ export function TradingChart() {
         </div>
         <div className="text-right">
           <p className="text-lg font-semibold text-zinc-100">
-            {cardPriceInr > 0 ? formatCurrency(cardPriceInr) : "--"}
+            {cardPriceUsd > 0 ? formatCurrency(cardPriceUsd) : "--"}
           </p>
           <p className={`text-xs ${cardChange >= 0 ? "text-emerald-400" : "text-red-400"}`}>
             {formatPercent(cardChange)}

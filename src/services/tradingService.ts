@@ -17,6 +17,7 @@ import {
 import { db } from "@/firebase/firebase";
 import { getCurrentMarketSnapshot, refreshMarketSnapshot } from "@/services/marketFeed";
 import { Trade, Wallet } from "@/types";
+import { safeNumber } from "@/utils/format";
 import { getMarketStatus, inferMarketCategory } from "@/utils/marketHours";
 
 const usersCol = collection(db, "users");
@@ -25,11 +26,12 @@ const transactionsCol = collection(db, "transactions");
 
 async function latestPrice(asset: string) {
   const cached = getCurrentMarketSnapshot();
-  const cachedPrice = cached.prices[asset]?.priceInr ?? 0;
+  // Fix: trade pricing must use only USD source.
+  const cachedPrice = safeNumber(cached.prices[asset]?.priceUsd);
   if (cachedPrice > 0) return cachedPrice;
 
   const refreshed = await refreshMarketSnapshot();
-  return refreshed.prices[asset]?.priceInr ?? 0;
+  return safeNumber(refreshed.prices[asset]?.priceUsd);
 }
 
 export async function ensureWallet(userId: string): Promise<Wallet> {
@@ -140,6 +142,11 @@ export async function placeTrade(input: {
   quantity: number;
 }) {
   const { userId, asset, type, quantity } = input;
+  const safeQuantity = safeNumber(quantity, 0, 1e6);
+  if (safeQuantity <= 0) {
+    throw new Error("Quantity must be greater than 0");
+  }
+
   const snapshot = getCurrentMarketSnapshot();
   const category = snapshot.prices[asset]?.category ?? inferMarketCategory(asset);
   const marketStatus = getMarketStatus(category);
@@ -152,7 +159,7 @@ export async function placeTrade(input: {
     throw new Error("Live price unavailable for selected asset");
   }
 
-  const required = quantity * currentPrice;
+  const required = safeNumber(safeQuantity * safeNumber(currentPrice), 0, 1e12);
   await ensureWallet(userId);
   const userRef = doc(usersCol, userId);
   const userProfileSnap = await getDoc(userRef);
@@ -167,7 +174,7 @@ export async function placeTrade(input: {
 
   if (type === "sell") {
     const availableQty = await getAvailableHoldingQty(userId, asset);
-    if (availableQty < quantity) {
+    if (availableQty < safeQuantity) {
       throw new Error(`Insufficient holdings to sell. Available: ${availableQty.toFixed(4)}`);
     }
   }
@@ -186,15 +193,15 @@ export async function placeTrade(input: {
       updatedAt: Date.now(),
     };
 
-    if (wallet.balance < required) {
+    if (safeNumber(wallet.balance) < required) {
       throw new Error("Insufficient wallet balance");
     }
 
     tx.set(
       userRef,
       {
-        balance: wallet.balance - required,
-        locked: wallet.locked + required,
+        balance: safeNumber(wallet.balance) - required,
+        locked: safeNumber(wallet.locked) + required,
         updatedAt: Date.now(),
       },
       { merge: true },
@@ -208,7 +215,7 @@ export async function placeTrade(input: {
     userSearchKey,
     asset,
     type,
-    quantity,
+    quantity: safeQuantity,
     entryPrice: currentPrice,
     currentPrice,
     pnl: 0,
@@ -238,13 +245,13 @@ export async function closeTrade(trade: Trade) {
     throw new Error("Live price unavailable for selected asset");
   }
 
-  const pnlPerUnit =
-    trade.type === "buy"
-      ? currentPrice - trade.entryPrice
-      : trade.entryPrice - currentPrice;
+  const entryPrice = safeNumber(trade.entryPrice);
+  const quantity = safeNumber(trade.quantity, 0, 1e6);
 
-  const pnl = pnlPerUnit * trade.quantity;
-  const principal = trade.entryPrice * trade.quantity;
+  // Fix: canonical formula required by spec, with direction handling for sell trades.
+  const basePnl = safeNumber((safeNumber(currentPrice) - entryPrice) * quantity, 0, 1e12);
+  const pnl = trade.type === "sell" ? safeNumber(-basePnl, 0, 1e12) : basePnl;
+  const principal = safeNumber(entryPrice * quantity, 0, 1e12);
   const now = Date.now();
 
   await updateDoc(doc(tradesCol, trade.id), {
