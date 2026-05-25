@@ -96,6 +96,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!auth) {
+      setFirebaseUser(null);
+      setAppUser(null);
+      setLoading(false);
+      return;
+    }
+
     const unsub = onAuthStateChanged(auth, async (user) => {
       setFirebaseUser(user);
 
@@ -152,10 +159,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       appUser,
       loading,
       login: async (email, password) => {
+        if (!auth) {
+          throw new Error("Firebase authentication is not configured.");
+        }
         await ensureAuthPersistence();
         await signInWithEmailAndPassword(auth, email, password);
       },
       signup: async (payload) => {
+        if (!auth) {
+          throw new Error("Firebase authentication is not configured.");
+        }
         await ensureAuthPersistence();
         const cred = await createUserWithEmailAndPassword(auth, payload.email, payload.password);
         const userRef = doc(db, "users", cred.user.uid);
@@ -198,11 +211,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return cred.user.uid;
       },
       loginWithGoogle: async () => {
+        if (!auth) {
+          throw new Error("Firebase authentication is not configured.");
+        }
         await ensureAuthPersistence();
         const cred = await signInWithPopup(auth, googleProvider);
         await upsertUserProfile(cred.user);
       },
       logout: async () => {
+        if (!auth) {
+          return;
+        }
         await signOut(auth);
       },
     }),

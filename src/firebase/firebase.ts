@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import {
   getAuth,
+  type Auth,
   GoogleAuthProvider,
   setPersistence,
   browserLocalPersistence,
@@ -35,10 +36,11 @@ if (!isFirebaseConfigured && typeof window !== "undefined") {
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-export const auth = getAuth(app);
+export const auth: Auth | null =
+  typeof window !== "undefined" && isFirebaseConfigured ? getAuth(app) : null;
 
 export async function ensureAuthPersistence() {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || !auth) return;
   await setPersistence(auth, browserLocalPersistence);
 }
 

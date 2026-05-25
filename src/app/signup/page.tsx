@@ -235,7 +235,7 @@ export default function SignupPage() {
       if (createdUid) {
         try {
           await deleteDoc(doc(db, "users", createdUid));
-          if (auth.currentUser) {
+          if (auth?.currentUser) {
             await deleteUser(auth.currentUser);
           }
         } catch (cleanupError) {

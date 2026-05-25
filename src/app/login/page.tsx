@@ -37,7 +37,7 @@ export default function LoginPage() {
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
   const handlePostLoginRoute = async () => {
-    const uid = auth.currentUser?.uid;
+    const uid = auth?.currentUser?.uid;
     if (!uid) {
       router.replace("/login");
       return;
