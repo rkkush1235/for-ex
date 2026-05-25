@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/hooks/useAuth";
+import { BrandLoader } from "@/components/common/BrandLoader";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -32,11 +33,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }, [loading, appUser, pathname, router]);
 
   if (!mounted || loading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="h-14 w-14 animate-spin rounded-full border-4 border-zinc-700 border-t-emerald-400" />
-      </div>
-    );
+    return <BrandLoader />;
   }
 
   if (!firebaseUser) {

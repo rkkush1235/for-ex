@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
+import { BrandLoader } from "@/components/common/BrandLoader";
 
 export default function ApprovalStatusPage() {
   const { appUser, loading, logout } = useAuth();
 
   if (loading) {
-    return <div className="mx-auto flex min-h-screen max-w-lg items-center justify-center">Loading...</div>;
+    return <BrandLoader fullScreen />;
   }
 
   if (!appUser) {

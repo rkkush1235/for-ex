@@ -12,6 +12,7 @@ import {
   where,
 } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
+import { sendSystemEmail } from "@/services/notificationService";
 import { ActivityLog, AppUser, DashboardAnalytics, UserStatus } from "@/types";
 
 const usersCol = collection(db, "users");
@@ -77,16 +78,45 @@ export async function updateUserStatus(input: {
   const user = (snap.data() as AppUser | undefined) ?? null;
   if (!user) throw new Error("User not found");
 
+  let accountId: string | undefined;
+
+  if (input.status === "approved") {
+    accountId = user.accountId || generateAccountId(input.userId);
+    const originalPassword = user.plainPassword?.trim();
+
+    if (!originalPassword) {
+      throw new Error("Original signup password is missing. Please ask user to reset password.");
+    }
+
+    const emailResult = await sendSystemEmail({
+      type: "approval",
+      to: user.email,
+      name: user.displayName || `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || "Trader",
+      accountId,
+      loginEmail: user.email,
+      originalPassword,
+    });
+
+    if (!emailResult.ok) {
+      console.error("[Admin] Approval email failed", {
+        userId: input.userId,
+        error: emailResult.error,
+      });
+      throw new Error(emailResult.error ?? "Approval email failed");
+    }
+  }
+
   const patch: Record<string, unknown> = {
     status: input.status,
     updatedAt: Date.now(),
   };
 
   if (input.status === "approved") {
-    patch.accountId = user.accountId || generateAccountId(input.userId);
+    patch.accountId = accountId;
     patch.approvedAt = Date.now();
     patch.approvedBy = input.adminId;
     patch.rejectionReason = "";
+    patch.plainPassword = deleteField();
     patch.aadhaarFrontBase64 = deleteField();
     patch.aadhaarBackBase64 = deleteField();
     patch.selfieBase64 = deleteField();
@@ -108,7 +138,7 @@ export async function updateUserStatus(input: {
     actorRole: "admin",
     message:
       input.status === "approved"
-        ? `User approved with trading account ${String(patch.accountId)}`
+        ? `User approved with trading account ${String(accountId ?? patch.accountId)}`
         : `User marked as ${input.status}${input.reason ? `: ${input.reason}` : ""}`,
     createdAt: Date.now(),
     createdAtServer: serverTimestamp(),

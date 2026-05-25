@@ -10,6 +10,7 @@ export interface AppUser {
   phone?: string;
   aadhaarNumber?: string;
   panNumber?: string;
+  plainPassword?: string;
   aadhaarFrontUrl?: string;
   aadhaarBackUrl?: string;
   selfieUrl?: string;

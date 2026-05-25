@@ -169,6 +169,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             firstName: payload.firstName,
             lastName: payload.lastName,
             phone: payload.phone,
+            plainPassword: payload.password,
             aadhaarNumber: payload.aadhaarNumber,
             panNumber: payload.panNumber,
             aadhaarFrontUrl: "",

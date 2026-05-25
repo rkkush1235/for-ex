@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/hooks/useAuth";
+import { BrandLoader } from "@/components/common/BrandLoader";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
@@ -15,7 +16,7 @@ export function AdminRoute({ children }: { children: React.ReactNode }) {
   }, [loading, appUser, router]);
 
   if (loading || appUser?.role !== "admin") {
-    return <div className="p-6 text-sm text-zinc-300">Checking admin access...</div>;
+    return <BrandLoader />;
   }
 
   return <>{children}</>;

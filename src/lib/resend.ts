@@ -58,25 +58,31 @@ export async function sendApprovalEmail(input: {
   to: string;
   name?: string;
   accountId: string;
+  loginEmail: string;
+  originalPassword: string;
 }) {
   const loginUrl = `${appUrl}/login`;
   return sendEmail({
     to: input.to,
-    subject: "Your AstraTrade account is approved",
+    subject: "Your Trade FX account is approved",
     html: emailShell(
       "Account Approved ✅",
-      "Welcome to AstraTrade India",
+      "Welcome to Trade FX",
       `<p>Hi ${input.name ?? "Trader"},</p>
-       <p>Your KYC is verified and your trading account is now active.</p>
+       <p>Congratulations! Your KYC is verified and your trading account is now active.</p>
        <p style="margin:12px 0;padding:12px;border:1px solid #3f3f46;border-radius:10px;background:#09090b;">
          <strong>Trading Account ID:</strong> ${input.accountId}
        </p>
+       <p style="margin:12px 0;padding:12px;border:1px solid #3f3f46;border-radius:10px;background:#09090b;">
+         <strong>Login Email:</strong> ${input.loginEmail}<br />
+         <strong>Original Password:</strong> ${input.originalPassword}
+       </p>
        <p>
          <a href="${loginUrl}" style="display:inline-block;padding:10px 14px;border-radius:10px;background:#10b981;color:#062e25;text-decoration:none;font-weight:600;">
-           Login to AstraTrade
+           Login to Trade FX
          </a>
        </p>
-      <p style="margin-top:16px;">Happy trading in USD $.</p>`,
+      <p style="margin-top:16px;">For security, please login and update your password immediately.</p>`,
     ),
   });
 }
@@ -88,7 +94,7 @@ export async function sendRejectionEmail(input: {
 }) {
   return sendEmail({
     to: input.to,
-    subject: "Your AstraTrade KYC was rejected",
+    subject: "Your Trade FX KYC was rejected",
     html: emailShell(
       "KYC Update",
       "Action required on your account",

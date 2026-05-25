@@ -1,19 +1,24 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AdminRoute } from "@/components/guards/AdminRoute";
 import { AppShell } from "@/components/layout/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { useUpdateUserStatus, useUsers } from "@/hooks/useAdmin";
 import { UserStatus } from "@/types";
 
+type ToastState = { type: "success" | "error"; message: string } | null;
+
 export default function AdminKycPage() {
+  const router = useRouter();
   const { appUser } = useAuth();
   const users = useUsers();
   const updateStatus = useUpdateUserStatus();
   const [activeUid, setActiveUid] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<UserStatus | "all">("pending");
   const [activeAction, setActiveAction] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastState>(null);
 
   const filteredUsers = useMemo(() => {
     if (statusFilter === "all") return users;
@@ -31,6 +36,20 @@ export default function AdminKycPage() {
   return (
     <AdminRoute>
       <AppShell title="KYC Verification">
+        {toast ? (
+          <div className="fixed right-4 top-4 z-50">
+            <div
+              className={`rounded-lg border px-4 py-3 text-sm shadow-lg ${
+                toast.type === "success"
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                  : "border-red-500/40 bg-red-500/10 text-red-300"
+              }`}
+            >
+              {toast.message}
+            </div>
+          </div>
+        ) : null}
+
         <section className="grid gap-4 lg:grid-cols-[320px_1fr]">
           <div className="glass space-y-2 p-4">
             <h3 className="text-sm font-medium">User KYC Documents ({filteredUsers.length})</h3>
@@ -95,19 +114,39 @@ export default function AdminKycPage() {
 
                 <div className="flex gap-2">
                   <button
-                    disabled={updateStatus.isPending}
+                    disabled={updateStatus.isPending || activeAction === `${activeUser.uid}-approved`}
                     className="rounded-md bg-emerald-500 px-5 py-3 text-base font-bold text-zinc-900"
                     onClick={async () => {
                       const key = `${activeUser.uid}-approved`;
                       setActiveAction(key);
-                      await updateStatus.mutateAsync({
-                        userId: activeUser.uid,
-                        adminId: appUser?.uid ?? "admin",
-                        status: "approved",
-                      }).finally(() => setActiveAction(null));
+                      setToast(null);
+
+                      try {
+                        await updateStatus.mutateAsync({
+                          userId: activeUser.uid,
+                          adminId: appUser?.uid ?? "admin",
+                          status: "approved",
+                        });
+
+                        setToast({ type: "success", message: "User approved and email sent successfully." });
+                        router.refresh();
+                      } catch (error) {
+                        console.error("[Admin KYC] Approval failed", error);
+                        setToast({ type: "error", message: "Approval email failed. User remains pending." });
+                      } finally {
+                        setActiveAction(null);
+                        setTimeout(() => setToast(null), 3500);
+                      }
                     }}
                   >
-                    {activeAction === `${activeUser.uid}-approved` ? "Approving..." : "Approve User"}
+                    {activeAction === `${activeUser.uid}-approved` ? (
+                      <span className="inline-flex items-center gap-2">
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-900/30 border-t-zinc-900" />
+                        Sending approval email...
+                      </span>
+                    ) : (
+                      "Approve User"
+                    )}
                   </button>
                   <button
                     disabled={updateStatus.isPending}

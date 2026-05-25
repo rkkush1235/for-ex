@@ -3,7 +3,7 @@ import Link from "next/link";
 export default function Home() {
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col justify-center px-6 py-16">
-      <p className="text-xs uppercase tracking-[0.25em] text-zinc-400">AstraTrade India</p>
+      <p className="text-xs uppercase tracking-[0.25em] text-zinc-400">Trade FX</p>
       <h1 className="mt-4 text-4xl font-bold sm:text-5xl">
         Real-Time Forex, Crypto, Gold & Silver Trading Platform
       </h1>

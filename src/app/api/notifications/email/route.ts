@@ -6,43 +6,61 @@ import {
   sendWithdrawalEmail,
 } from "@/lib/resend";
 
+function cleanString(input: unknown) {
+  if (typeof input !== "string") return undefined;
+  const trimmed = input.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    const type = cleanString(body.type);
+    const to = cleanString(body.to);
+
+    if (!type) {
+      return NextResponse.json({ ok: false, error: "Email type is required" }, { status: 400 });
+    }
+
+    if (!to) {
+      return NextResponse.json({ ok: false, error: "Recipient email is required" }, { status: 400 });
+    }
 
     let result: { ok: boolean; error?: string } = { ok: false, error: "Invalid email type" };
 
-    if (body.type === "approval") {
+    if (type === "approval") {
       result = await sendApprovalEmail({
-        to: body.to,
-        name: body.name,
-        accountId: body.accountId ?? "N/A",
+        to,
+        name: cleanString(body.name),
+        accountId: cleanString(body.accountId) ?? "N/A",
+        loginEmail: cleanString(body.loginEmail) ?? to,
+        originalPassword: cleanString(body.originalPassword) ?? "N/A",
       });
     }
 
-    if (body.type === "rejection") {
+    if (type === "rejection") {
       result = await sendRejectionEmail({
-        to: body.to,
-        name: body.name,
-        reason: body.reason,
+        to,
+        name: cleanString(body.name),
+        reason: cleanString(body.reason),
       });
     }
 
-    if (body.type === "deposit") {
+    if (type === "deposit") {
       result = await sendDepositEmail({
-        to: body.to,
-        name: body.name,
+        to,
+        name: cleanString(body.name),
         amount: Number(body.amount ?? 0),
-        status: String(body.status ?? "updated"),
+        status: cleanString(body.status) ?? "updated",
       });
     }
 
-    if (body.type === "withdrawal") {
+    if (type === "withdrawal") {
       result = await sendWithdrawalEmail({
-        to: body.to,
-        name: body.name,
+        to,
+        name: cleanString(body.name),
         amount: Number(body.amount ?? 0),
-        status: String(body.status ?? "updated"),
+        status: cleanString(body.status) ?? "updated",
       });
     }
 
