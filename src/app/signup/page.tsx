@@ -208,6 +208,10 @@ export default function SignupPage() {
         throw new Error("Images are too large for Firestore document. Please use lower-size images.");
       }
 
+      if (!createdUid) {
+        throw new Error("Account creation failed. Please try again.");
+      }
+
       setProgressMessage("Saving KYC details...");
       const now = Date.now();
       await setDoc(

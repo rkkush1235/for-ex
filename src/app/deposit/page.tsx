@@ -1,47 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { AppShell } from "@/components/layout/AppShell";
 import { useAuth } from "@/hooks/useAuth";
-import { useCreateDepositRequest, useDeposits } from "@/hooks/useWalletRequests";
-import { ADMIN_BANK_DETAILS, ADMIN_UPI_ID } from "@/utils/constants";
-import { uploadDepositScreenshot } from "@/firebase/storage";
+import { useDeposits } from "@/hooks/useWalletRequests";
 import { formatCurrency } from "@/utils/format";
-
-const schema = z.object({
-  amount: z.number().min(100),
-  upiId: z.string().min(3),
-});
-
-type FormData = z.infer<typeof schema>;
 
 export default function DepositPage() {
   const { appUser } = useAuth();
-  const [file, setFile] = useState<File | null>(null);
-  const createDeposit = useCreateDepositRequest();
   const rows = useDeposits(appUser?.uid);
-
-  const { register, handleSubmit, formState } = useForm<FormData>({
-    resolver: zodResolver(schema),
-    defaultValues: { upiId: "" },
-  });
-
-  const qrPayload = `upi://pay?pa=${encodeURIComponent(ADMIN_UPI_ID)}&pn=${encodeURIComponent("Forex Admin")}&cu=USD`;
-  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(qrPayload)}`;
-
-  const onSubmit = async (data: FormData) => {
-    if (!appUser?.uid || !file) return;
-    const screenshotUrl = await uploadDepositScreenshot(appUser.uid, file);
-    await createDeposit.mutateAsync({
-      userId: appUser.uid,
-      amount: data.amount,
-      upiId: data.upiId,
-      screenshotUrl,
-    });
-  };
 
   return (
     <AppShell title="Deposit">
@@ -49,49 +15,26 @@ export default function DepositPage() {
         <section className="glass space-y-3 p-4">
           <h3 className="text-sm font-medium">Payment Details</h3>
           <div className="rounded-lg bg-zinc-900/70 p-3 text-sm">
-            <p>UPI: {ADMIN_UPI_ID}</p>
-            <p>Account: {ADMIN_BANK_DETAILS.accountNumber}</p>
-            <p>IFSC: {ADMIN_BANK_DETAILS.ifsc}</p>
-            <p>Bank: {ADMIN_BANK_DETAILS.bank}</p>
+            <p>Bank Name: Axis Bank</p>
+            <p>Holder Name: Mahendra Bhargav</p>
+            <p>Account Number: 925010058902322</p>
+            <p>IFSC Code: UTIB0005692</p>
           </div>
-          <div className="rounded-xl border border-zinc-700 bg-zinc-900/60 p-2">
-            <img
-              src={qrImageUrl}
-              alt="Deposit QR code"
-              width={220}
-              height={220}
-              className="h-44 w-44 rounded-lg object-contain"
-            />
+
+          <div className="rounded-lg border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-amber-200">
+            Your deposit will be considered valid only after payment is received in the above account.
           </div>
         </section>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="glass space-y-3 p-4">
-          <h3 className="text-sm font-medium">Submit Deposit Request</h3>
-          <input
-            type="number"
-            placeholder="Amount"
-            {...register("amount", { valueAsNumber: true })}
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-900/70 px-3 py-2"
-          />
-          <input
-            placeholder="Your UPI ID"
-            {...register("upiId")}
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-900/70 px-3 py-2"
-          />
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-900/70 px-3 py-2 text-sm"
-          />
-          <button
-            type="submit"
-            disabled={formState.isSubmitting}
-            className="w-full rounded-lg bg-emerald-500 px-3 py-2 font-medium text-zinc-900"
-          >
-            {formState.isSubmitting ? "Submitting..." : "Submit Request"}
-          </button>
-        </form>
+        <section className="glass space-y-3 p-4">
+          <h3 className="text-sm font-medium">QR / Barcode</h3>
+          <div className="flex min-h-52 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-900/60 text-center">
+            <div>
+              <p className="text-sm font-medium text-zinc-200">QR Code Coming Soon</p>
+              <p className="mt-1 text-xs text-zinc-400">Barcode / scan payment option will be added soon.</p>
+            </div>
+          </div>
+        </section>
       </div>
 
       <section className="glass p-4">
