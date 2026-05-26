@@ -118,8 +118,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-md items-center px-4">
-      <form onSubmit={handleSubmit(onSubmit)} className="glass w-full space-y-4 p-6">
+    <div className="mx-auto flex min-h-screen w-full max-w-3xl items-center px-4 py-6">
+      <div className="grid w-full gap-4 md:grid-cols-[1.1fr_0.9fr]">
+        <form onSubmit={handleSubmit(onSubmit)} className="glass w-full space-y-4 p-6">
         <h1 className="text-2xl font-semibold">Login</h1>
         <div>
           <input
@@ -193,7 +194,31 @@ export default function LoginPage() {
         <p className="text-sm text-zinc-400">
           No account? <Link href="/signup" className="text-emerald-400">Signup</Link>
         </p>
-      </form>
+        </form>
+
+        <section className="glass space-y-4 p-6">
+          <h2 className="text-lg font-semibold">Why traders trust Trade FX</h2>
+          <div className="space-y-3 text-sm text-zinc-300">
+            <div className="rounded-lg border border-zinc-700 bg-zinc-900/50 px-3 py-2">
+              <p className="font-medium text-zinc-100">ISO Certified Infrastructure</p>
+              <p className="text-xs text-zinc-400">Secure trading operations and compliance-driven workflows.</p>
+            </div>
+            <div className="rounded-lg border border-zinc-700 bg-zinc-900/50 px-3 py-2">
+              <p className="font-medium text-zinc-100">2,00,000+ Registered Users</p>
+              <p className="text-xs text-zinc-400">Growing community of active forex, crypto, and metals traders.</p>
+            </div>
+            <div className="rounded-lg border border-zinc-700 bg-zinc-900/50 px-3 py-2">
+              <p className="font-medium text-zinc-100">Approved by Indian Gov*</p>
+              <p className="text-xs text-zinc-400">Trusted operations and documented KYC-first onboarding journey.</p>
+            </div>
+            <div className="rounded-lg border border-zinc-700 bg-zinc-900/50 px-3 py-2">
+              <p className="font-medium text-zinc-100">Serving Since 2016</p>
+              <p className="text-xs text-zinc-400">Consistent execution, transparent dashboard, and secure account flow.</p>
+            </div>
+          </div>
+          <p className="text-[11px] text-zinc-500">*Demo trust content for presentation purposes.</p>
+        </section>
+      </div>
     </div>
   );
 }

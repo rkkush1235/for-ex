@@ -30,7 +30,7 @@ export const MARKET_SYMBOL_MAP = {
   SILVER: "XAGUSD",
 } as const;
 
-export const POLL_INTERVAL_MS = 5_000;
+export const POLL_INTERVAL_MS = 2_000;
 
 export const ADMIN_UPI_ID = "tradehub@okicici";
 

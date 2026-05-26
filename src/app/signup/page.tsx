@@ -212,10 +212,12 @@ export default function SignupPage() {
         throw new Error("Account creation failed. Please try again.");
       }
 
+      const uid = createdUid;
+
       setProgressMessage("Saving KYC details...");
       const now = Date.now();
       await setDoc(
-        doc(db, "users", createdUid),
+        doc(db, "users", uid),
         {
           aadhaarFrontUrl: "",
           aadhaarBackUrl: "",
@@ -233,8 +235,9 @@ export default function SignupPage() {
       router.replace("/approval-status");
     } catch (error) {
       if (createdUid) {
+        const uid = createdUid;
         try {
-          await deleteDoc(doc(db, "users", createdUid));
+          await deleteDoc(doc(db, "users", uid));
           if (auth?.currentUser) {
             await deleteUser(auth.currentUser);
           }
@@ -295,8 +298,9 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-md items-center px-4">
-      <form onSubmit={handleSubmit(onSubmit)} className="glass w-full space-y-4 p-6">
+    <div className="mx-auto flex min-h-screen w-full max-w-4xl items-center px-4 py-6">
+      <div className="grid w-full gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+        <form onSubmit={handleSubmit(onSubmit)} className="glass w-full space-y-4 p-6">
         <h1 className="text-2xl font-semibold">Create Account</h1>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
@@ -460,7 +464,31 @@ export default function SignupPage() {
         <p className="text-sm text-zinc-400">
           Already have an account? <Link href="/login" className="text-emerald-400">Login</Link>
         </p>
-      </form>
+        </form>
+
+        <section className="glass space-y-4 p-6">
+          <h2 className="text-lg font-semibold">Trusted Trading Ecosystem</h2>
+          <div className="space-y-3 text-sm text-zinc-300">
+            <div className="rounded-lg border border-zinc-700 bg-zinc-900/50 px-3 py-2">
+              <p className="font-medium text-zinc-100">ISO Certified Platform</p>
+              <p className="text-xs text-zinc-400">Security-led onboarding and account handling standards.</p>
+            </div>
+            <div className="rounded-lg border border-zinc-700 bg-zinc-900/50 px-3 py-2">
+              <p className="font-medium text-zinc-100">2,00,000+ Users</p>
+              <p className="text-xs text-zinc-400">Large user base across forex, crypto, and commodity markets.</p>
+            </div>
+            <div className="rounded-lg border border-zinc-700 bg-zinc-900/50 px-3 py-2">
+              <p className="font-medium text-zinc-100">Approved by Indian Gov*</p>
+              <p className="text-xs text-zinc-400">KYC-centric onboarding process aligned for Indian users.</p>
+            </div>
+            <div className="rounded-lg border border-zinc-700 bg-zinc-900/50 px-3 py-2">
+              <p className="font-medium text-zinc-100">Operating Since 2016</p>
+              <p className="text-xs text-zinc-400">Stable service journey with transparent user workflows.</p>
+            </div>
+          </div>
+          <p className="text-[11px] text-zinc-500">*Demo trust content for UI representation.</p>
+        </section>
+      </div>
     </div>
   );
 }

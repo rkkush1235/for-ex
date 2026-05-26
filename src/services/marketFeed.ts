@@ -25,6 +25,17 @@ const BINANCE_FUTURES_STREAMS = [
   "xagusdt@ticker",
 ] as const;
 
+const BINANCE_FUTURES_SYMBOLS = [
+  "BTCUSDT",
+  "ETHUSDT",
+  "BNBUSDT",
+  "XRPUSDT",
+  "DOGEUSDT",
+  "SOLUSDT",
+  "XAUUSDT",
+  "XAGUSDT",
+] as const;
+
 const BINANCE_COMBINED_STREAM_URL = `wss://fstream.binance.com/stream?streams=${BINANCE_FUTURES_STREAMS.join("/")}`;
 
 const FUTURES_SYMBOL_TO_ASSET: Record<string, string> = {
@@ -77,6 +88,46 @@ function applyBinanceTickerUpdate(asset: string, lastPrice: number, changePercen
   };
 
   notifyListeners();
+}
+
+async function seedBinanceAssetsFromRest() {
+  try {
+    const encodedSymbols = encodeURIComponent(JSON.stringify(BINANCE_FUTURES_SYMBOLS));
+    const [priceRes, statsRes] = await Promise.all([
+      fetch(`https://fapi.binance.com/fapi/v1/ticker/price?symbols=${encodedSymbols}`, {
+        cache: "no-store",
+      }),
+      fetch(`https://fapi.binance.com/fapi/v1/ticker/24hr?symbols=${encodedSymbols}`, {
+        cache: "no-store",
+      }),
+    ]);
+
+    if (!priceRes.ok || !statsRes.ok) {
+      console.warn("[MarketFeed] Binance REST seed failed", {
+        priceStatus: priceRes.status,
+        statsStatus: statsRes.status,
+      });
+      return;
+    }
+
+    const prices = (await priceRes.json()) as Array<{ symbol?: string; price?: string }>;
+    const stats = (await statsRes.json()) as Array<{ symbol?: string; priceChangePercent?: string }>;
+
+    for (const row of prices) {
+      const symbol = String(row.symbol ?? "").toUpperCase();
+      const asset = FUTURES_SYMBOL_TO_ASSET[symbol];
+      if (!asset) continue;
+
+      const price = toFinitePositive(row.price);
+      if (!Number.isFinite(price)) continue;
+
+      const statRow = stats.find((stat) => String(stat.symbol ?? "").toUpperCase() === symbol);
+      const changePercent = toFiniteNumber(statRow?.priceChangePercent);
+      applyBinanceTickerUpdate(asset, price, changePercent);
+    }
+  } catch {
+    console.warn("[MarketFeed] Binance REST seed request failed");
+  }
 }
 
 function handleBinanceMessage(raw: unknown) {
@@ -148,6 +199,7 @@ function startBinanceStream() {
   ws.onopen = () => {
     reconnectAttempts = 0;
     console.info("[MarketFeed] Binance WS connected");
+    void seedBinanceAssetsFromRest();
   };
 
   ws.onmessage = (event) => {
@@ -222,6 +274,7 @@ function ensureFeedStarted() {
 
   void bootstrapSnapshotOnce();
   startBinanceStream();
+  void seedBinanceAssetsFromRest();
   void pollForexSnapshot();
   forexTimer = setInterval(pollForexSnapshot, POLL_INTERVAL_MS);
 }
