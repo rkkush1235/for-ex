@@ -1,3 +1,5 @@
+import emailjs from "@emailjs/browser";
+
 export async function sendSystemEmail(payload: {
   type: "approval" | "rejection" | "deposit" | "withdrawal";
   to: string;
@@ -9,20 +11,52 @@ export async function sendSystemEmail(payload: {
   amount?: number;
   status?: string;
 }) {
-  try {
-    const response = await fetch("/api/notifications/email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+  const serviceId = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID;
+  const templateId = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID;
+  const publicKey = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY;
 
-    if (!response.ok) {
-      const body = (await response.json().catch(() => null)) as { error?: string } | null;
-      return { ok: false as const, error: body?.error ?? "Email request failed" };
-    }
+  if (!serviceId || !templateId || !publicKey) {
+    return { ok: false as const, error: "EmailJS is not configured" };
+  }
+
+  if (typeof window === "undefined") {
+    return { ok: false as const, error: "EmailJS can only run in browser context" };
+  }
+
+  const name = payload.name?.trim() || "Trader";
+  const username = payload.loginEmail?.trim() || payload.to;
+
+  let password = payload.originalPassword?.trim() || "";
+  if (payload.type === "rejection") {
+    password = payload.reason?.trim() || "KYC rejected";
+  }
+
+  if (payload.type === "deposit") {
+    const amount = Number(payload.amount ?? 0).toFixed(2);
+    password = `Deposit ${String(payload.status ?? "updated").toUpperCase()} | Amount: $${amount}`;
+  }
+
+  if (payload.type === "withdrawal") {
+    const amount = Number(payload.amount ?? 0).toFixed(2);
+    password = `Withdrawal ${String(payload.status ?? "updated").toUpperCase()} | Amount: $${amount}`;
+  }
+
+  try {
+    await emailjs.send(
+      serviceId,
+      templateId,
+      {
+        name,
+        username,
+        password,
+        to_email: payload.to,
+      },
+      { publicKey },
+    );
 
     return { ok: true as const };
-  } catch {
-    return { ok: false as const, error: "Email API is unreachable" };
+  } catch (error) {
+    console.error("[EmailJS] Failed to send email", { type: payload.type, error });
+    return { ok: false as const, error: "EmailJS send failed" };
   }
 }
