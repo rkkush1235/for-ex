@@ -94,7 +94,7 @@ export default function Home() {
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <div className="rounded-lg border border-zinc-700 bg-zinc-900/60 p-3">
                   <p className="text-xs text-zinc-400">Registered Users</p>
-                  <p className="mt-1 text-2xl font-semibold">2 Cr+</p>
+                  <p className="mt-1 text-2xl font-semibold">2 lakh+</p>
                 </div>
                 <div className="rounded-lg border border-zinc-700 bg-zinc-900/60 p-3">
                   <p className="text-xs text-zinc-400">Crypto Assets</p>
@@ -102,7 +102,7 @@ export default function Home() {
                 </div>
                 <div className="rounded-lg border border-zinc-700 bg-zinc-900/60 p-3 sm:col-span-2">
                   <p className="text-xs text-zinc-400">Quarterly Trading Volumes</p>
-                  <p className="mt-1 text-2xl font-semibold">₹2.44 Cr+</p>
+                  <p className="mt-1 text-2xl font-semibold">₹2.44 lakh+</p>
                 </div>
               </div>
             </div>
