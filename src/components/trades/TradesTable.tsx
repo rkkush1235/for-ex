@@ -39,11 +39,10 @@ export function TradesTable({
 
             // Fix: canonical formula -> PnL = (currentPrice - entryPrice) * quantity.
             const basePnl = safeNumber((currentPrice - entryPrice) * qty, 0, 1e12);
-            const livePnl = open
-              ? trade.type === "sell"
+            const livePnl =
+              trade.type === "sell"
                 ? safeNumber(-basePnl, 0, 1e12)
-                : basePnl
-              : safeNumber(trade.pnl);
+                : basePnl;
 
             return (
               <tr key={trade.id} className="border-t border-zinc-800/80">

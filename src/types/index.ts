@@ -37,14 +37,12 @@ export interface MarketPrice {
   symbol: string;
   category: "forex" | "crypto" | "metal";
   priceUsd: number;
-  priceInr: number;
   change24h: number;
   updatedAt: number;
 }
 
 export interface MarketSnapshot {
   prices: Record<string, MarketPrice>;
-  usdInr: number;
   updatedAt: number;
   source: "polling" | "manual";
 }

@@ -2,10 +2,10 @@ import Link from "next/link";
 
 export default function Home() {
   const topAssets = [
-    { name: "Bitcoin", symbol: "BTC", price: "₹76,17,836.00" },
-    { name: "Ethereum", symbol: "ETH", price: "₹2,08,165.80" },
-    { name: "Ripple", symbol: "XRP", price: "₹133.32" },
-    { name: "BNB", symbol: "BNB", price: "₹65,411.93" },
+    { name: "Bitcoin", symbol: "BTC", price: "$91,840.00" },
+    { name: "Ethereum", symbol: "ETH", price: "$2,510.00" },
+    { name: "Ripple", symbol: "XRP", price: "$1.61" },
+    { name: "BNB", symbol: "BNB", price: "$790.50" },
   ];
 
   const footerColumns: Array<{ title: string; links: string[] }> = [
@@ -102,7 +102,7 @@ export default function Home() {
                 </div>
                 <div className="rounded-lg border border-zinc-700 bg-zinc-900/60 p-3 sm:col-span-2">
                   <p className="text-xs text-zinc-400">Quarterly Trading Volumes</p>
-                  <p className="mt-1 text-2xl font-semibold">₹2.44 lakh+</p>
+                  <p className="mt-1 text-2xl font-semibold">$295K+</p>
                 </div>
               </div>
             </div>
@@ -168,8 +168,8 @@ export default function Home() {
               <p className="mt-2 text-xs text-zinc-400">Always-on chat and support operations for smooth account guidance.</p>
             </article>
             <article className="rounded-xl border border-zinc-700 bg-zinc-900/60 p-4">
-              <p className="font-medium">Free INR Deposits & Withdrawals</p>
-              <p className="mt-2 text-xs text-zinc-400">Unlimited INR bank transfer experience with transparent wallet flow.</p>
+              <p className="font-medium">Free USD Deposits & Withdrawals</p>
+              <p className="mt-2 text-xs text-zinc-400">Unlimited USD transfer experience with transparent wallet flow.</p>
             </article>
             <article className="rounded-xl border border-zinc-700 bg-zinc-900/60 p-4">
               <p className="font-medium">Automated Tax Reports</p>

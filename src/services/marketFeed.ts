@@ -80,7 +80,6 @@ function applyBinanceTickerUpdate(asset: string, lastPrice: number, changePercen
         symbol: asset,
         category,
         priceUsd: lastPrice,
-        priceInr: lastPrice,
         change24h: nextChange,
         updatedAt: now,
       },

@@ -33,7 +33,7 @@ export default function AdminPage() {
   const snapshot = useMarketData();
 
   const [manualSymbol, setManualSymbol] = useState("BTC");
-  const [manualInrPrice, setManualInrPrice] = useState(0);
+  const [manualUsdPrice, setManualUsdPrice] = useState(0);
   const [walletUserId, setWalletUserId] = useState("");
   const [walletBalance, setWalletBalance] = useState(0);
   const [entryPriceDrafts, setEntryPriceDrafts] = useState<Record<string, string>>({});
@@ -134,8 +134,8 @@ export default function AdminPage() {
             </select>
             <input
               type="number"
-              value={manualInrPrice}
-              onChange={(event) => setManualInrPrice(Number(event.target.value))}
+              value={manualUsdPrice}
+              onChange={(event) => setManualUsdPrice(Number(event.target.value))}
               className="rounded-lg border border-zinc-700 bg-zinc-900/70 px-3 py-2"
             />
             <button
@@ -265,7 +265,7 @@ export default function AdminPage() {
           <h3 className="mb-3 text-sm font-medium">Manage Trades</h3>
           <div className="space-y-2">
             {trades.slice(0, 40).map((trade) => {
-              const currentPrice = snapshot.prices[trade.asset]?.priceInr ?? trade.currentPrice;
+              const currentPrice = snapshot.prices[trade.asset]?.priceUsd ?? trade.currentPrice;
               const pnlPerUnit =
                 trade.type === "buy"
                   ? currentPrice - trade.entryPrice
