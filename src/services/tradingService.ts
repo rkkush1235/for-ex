@@ -3,6 +3,7 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
   increment,
   onSnapshot,
   orderBy,
@@ -18,6 +19,7 @@ import { getCurrentMarketSnapshot, refreshMarketSnapshot } from "@/services/mark
 import { Trade, Wallet } from "@/types";
 import { safeNumber } from "@/utils/format";
 import { getMarketStatus, inferMarketCategory } from "@/utils/marketHours";
+import { calculatePnL, calculateRequiredMargin } from "@/utils/tradingCalculations";
 
 const usersCol = collection(db, "users");
 const tradesCol = collection(db, "trades");
@@ -121,31 +123,81 @@ export function subscribeAllTrades(
   );
 }
 
-export async function placeTrade(input: {
+async function getOpenTrades(userId: string) {
+  const q = query(tradesCol, where("userId", "==", userId));
+  const snap = await getDocs(q);
+  return snap.docs
+    .map((d) => ({ id: d.id, ...(d.data() as Omit<Trade, "id">) }))
+    .filter((trade) => trade.status === "open") as Trade[];
+}
+
+async function closePosition(userId: string, tradesToClose: Trade[], currentPriceByAsset: Record<string, number>) {
+  let closedType: "buy" | "sell" = "buy";
+
+  for (const trade of tradesToClose) {
+    const currentPrice = safeNumber(currentPriceByAsset[trade.asset]);
+    if (currentPrice <= 0) {
+      throw new Error(`Live price unavailable for ${trade.asset}`);
+    }
+
+    const quantity = safeNumber(trade.quantity, 0, 1e6);
+    const pnl = calculatePnL({
+      entryPrice: safeNumber(trade.entryPrice),
+      currentPrice,
+      quantity,
+      side: trade.type,
+    });
+    const principal = safeNumber(trade.entryPrice * quantity, 0, 1e12);
+    const blockedMargin =
+      safeNumber(trade.marginUsed, 0, 1e12) > 0
+        ? safeNumber(trade.marginUsed, 0, 1e12)
+        : principal;
+    const now = Date.now();
+
+    await updateDoc(doc(tradesCol, trade.id), {
+      currentPrice,
+      pnl,
+      status: "closed",
+      closedAt: now,
+    });
+
+    await updateDoc(doc(usersCol, userId), {
+      balance: increment(blockedMargin + pnl),
+      locked: increment(-blockedMargin),
+      updatedAt: now,
+    });
+
+    try {
+      await addDoc(transactionsCol, {
+        userId,
+        type: "trade_pnl",
+        amount: blockedMargin + pnl,
+        status: "completed",
+        createdAt: now,
+        createdAtServer: serverTimestamp(),
+        note: `Position closed ${trade.asset} (${trade.type.toUpperCase()}) P/L ${pnl.toFixed(2)}`,
+      });
+    } catch (error) {
+      console.error("[Trading] Transaction log write failed after position close", error);
+    }
+
+    closedType = trade.type;
+  }
+
+  return { closedType };
+}
+
+async function openPosition(input: {
   userId: string;
   asset: string;
   type: "buy" | "sell";
   quantity: number;
+  leverage: number;
+  currentPrice: number;
 }) {
-  const { userId, asset, type, quantity } = input;
-  const safeQuantity = safeNumber(quantity, 0, 1e6);
-  if (safeQuantity <= 0) {
-    throw new Error("Quantity must be greater than 0");
-  }
+  const { userId, asset, type, quantity, leverage, currentPrice } = input;
+  const required = calculateRequiredMargin(quantity, currentPrice, leverage);
 
-  const snapshot = getCurrentMarketSnapshot();
-  const category = snapshot.prices[asset]?.category ?? inferMarketCategory(asset);
-  const marketStatus = getMarketStatus(category);
-  if (!marketStatus.isOpen) {
-    throw new Error(marketStatus.message);
-  }
-
-  const currentPrice = await latestPrice(asset);
-  if (!currentPrice || currentPrice <= 0) {
-    throw new Error("Live price unavailable for selected asset");
-  }
-
-  const required = safeNumber(safeQuantity * safeNumber(currentPrice), 0, 1e12);
   await ensureWallet(userId);
   const userRef = doc(usersCol, userId);
   const userProfileSnap = await getDoc(userRef);
@@ -173,7 +225,7 @@ export async function placeTrade(input: {
     };
 
     if (safeNumber(wallet.balance) < required) {
-      throw new Error("Insufficient wallet balance");
+      throw new Error(`Insufficient wallet balance. Required margin: ${required.toFixed(2)}`);
     }
 
     tx.set(
@@ -194,7 +246,9 @@ export async function placeTrade(input: {
     userSearchKey,
     asset,
     type,
-    quantity: safeQuantity,
+    quantity,
+    leverage,
+    marginUsed: required,
     entryPrice: currentPrice,
     currentPrice,
     pnl: 0,
@@ -218,6 +272,79 @@ export async function placeTrade(input: {
   }
 }
 
+export type PlaceTradeResult = {
+  action: "opened" | "closed_position";
+  closedType?: "buy" | "sell";
+  message: string;
+};
+
+export async function placeTrade(input: {
+  userId: string;
+  asset: string;
+  type: "buy" | "sell";
+  quantity: number;
+  leverage?: number;
+}): Promise<PlaceTradeResult> {
+  const { userId, asset, type } = input;
+  const safeQuantity = safeNumber(input.quantity, 0, 1e6);
+  if (safeQuantity <= 0) {
+    throw new Error("Quantity must be greater than 0");
+  }
+
+  const snapshot = getCurrentMarketSnapshot();
+  const category = snapshot.prices[asset]?.category ?? inferMarketCategory(asset);
+  const marketStatus = getMarketStatus(category);
+  if (!marketStatus.isOpen) {
+    throw new Error(marketStatus.message);
+  }
+
+  const currentPrice = await latestPrice(asset);
+  if (!currentPrice || currentPrice <= 0) {
+    throw new Error("Live price unavailable for selected asset");
+  }
+
+  const openTrades = await getOpenTrades(userId);
+  if (openTrades.length > 0) {
+    const activeType = openTrades[0].type;
+    if (activeType === type) {
+      throw new Error(`Only one active position allowed. ${activeType.toUpperCase()} position already active.`);
+    }
+
+    const priceByAsset: Record<string, number> = {};
+    for (const trade of openTrades) {
+      priceByAsset[trade.asset] = trade.asset === asset
+        ? currentPrice
+        : await latestPrice(trade.asset);
+    }
+
+    const closed = await closePosition(userId, openTrades, priceByAsset);
+    return {
+      action: "closed_position",
+      closedType: closed.closedType,
+      message:
+        closed.closedType === "buy"
+          ? "BUY position closed successfully. Press SELL again to open short position."
+          : "SELL position closed successfully. Press BUY again to open long position.",
+    };
+  }
+
+  const rawLeverage = safeNumber(input.leverage, 1, 300);
+  const safeLeverage = Math.max(1, rawLeverage);
+  await openPosition({
+    userId,
+    asset,
+    type,
+    quantity: safeQuantity,
+    leverage: safeLeverage,
+    currentPrice,
+  });
+
+  return {
+    action: "opened",
+    message: `${type.toUpperCase()} position opened successfully.`,
+  };
+}
+
 export async function closeTrade(trade: Trade) {
   const currentPrice = await latestPrice(trade.asset);
   if (!currentPrice || currentPrice <= 0) {
@@ -228,9 +355,17 @@ export async function closeTrade(trade: Trade) {
   const quantity = safeNumber(trade.quantity, 0, 1e6);
 
   // Fix: canonical formula required by spec, with direction handling for sell trades.
-  const basePnl = safeNumber((safeNumber(currentPrice) - entryPrice) * quantity, 0, 1e12);
-  const pnl = trade.type === "sell" ? safeNumber(-basePnl, 0, 1e12) : basePnl;
+  const pnl = calculatePnL({
+    entryPrice,
+    currentPrice,
+    quantity,
+    side: trade.type,
+  });
   const principal = safeNumber(entryPrice * quantity, 0, 1e12);
+  const blockedMargin =
+    safeNumber(trade.marginUsed, 0, 1e12) > 0
+      ? safeNumber(trade.marginUsed, 0, 1e12)
+      : principal;
   const now = Date.now();
 
   await updateDoc(doc(tradesCol, trade.id), {
@@ -241,8 +376,8 @@ export async function closeTrade(trade: Trade) {
   });
 
   await updateDoc(doc(usersCol, trade.userId), {
-    balance: increment(principal + pnl),
-    locked: increment(-principal),
+    balance: increment(blockedMargin + pnl),
+    locked: increment(-blockedMargin),
     updatedAt: now,
   });
 
@@ -250,7 +385,7 @@ export async function closeTrade(trade: Trade) {
     await addDoc(transactionsCol, {
       userId: trade.userId,
       type: "trade_pnl",
-      amount: principal + pnl,
+      amount: blockedMargin + pnl,
       status: "completed",
       createdAt: now,
       createdAtServer: serverTimestamp(),

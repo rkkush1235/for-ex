@@ -60,6 +60,8 @@ export interface Trade {
   asset: string;
   type: "buy" | "sell";
   quantity: number;
+  leverage?: number;
+  marginUsed?: number;
   entryPrice: number;
   currentPrice: number;
   pnl: number;
