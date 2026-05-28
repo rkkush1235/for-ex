@@ -274,8 +274,6 @@ export default function AdminPage() {
               const draftValue = entryPriceDrafts[trade.id] ?? String(trade.entryPrice);
               const parsedDraftValue = Number(draftValue);
               const canUpdateEntryPrice =
-                trade.status === "open" &&
-                trade.type === "buy" &&
                 Number.isFinite(parsedDraftValue) &&
                 parsedDraftValue > 0 &&
                 parsedDraftValue !== trade.entryPrice;
@@ -289,56 +287,54 @@ export default function AdminPage() {
                   <span className={profitLoss >= 0 ? "text-emerald-400" : "text-red-400"}>
                     P/L: {formatCurrency(profitLoss)}
                   </span>
-                  {trade.status === "open" && trade.type === "buy" ? (
-                    <div className="w-full rounded-md border border-zinc-700/80 bg-zinc-900/40 p-2 sm:w-auto">
-                      <p className="mb-2 text-[11px] text-zinc-400">
-                        Current Buy Price: {formatCurrency(trade.entryPrice)}
-                      </p>
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={draftValue}
-                        placeholder="Enter new buy price"
-                        inputMode="decimal"
-                        aria-label="Update buy price"
-                        onChange={(event) =>
-                          setEntryPriceDrafts((prev) => ({
-                            ...prev,
-                            [trade.id]: event.target.value,
-                          }))
-                        }
-                        className="w-full rounded-md border border-zinc-700 bg-zinc-900/70 px-3 py-2 text-sm sm:w-44"
-                      />
-                      <button
-                        className="w-full rounded-md bg-amber-400 px-3 py-2 text-sm font-medium text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-                        disabled={!canUpdateEntryPrice || !!updatingTradeId}
-                        onClick={() => {
-                          setUpdatingTradeId(trade.id);
-                          return (
-                          updateTradeEntryPrice.mutate(
-                            { tradeId: trade.id, entryPrice: parsedDraftValue },
-                            {
-                              onSuccess: () => {
-                                setEntryPriceDrafts((prev) => {
-                                  const next = { ...prev };
-                                  delete next[trade.id];
-                                  return next;
-                                });
-                              },
-                              onSettled: () => {
-                                setUpdatingTradeId(null);
-                              },
+                  <div className="w-full rounded-md border border-zinc-700/80 bg-zinc-900/40 p-2 sm:w-auto">
+                    <p className="mb-2 text-[11px] text-zinc-400">
+                      Current Entry Price: {formatCurrency(trade.entryPrice)}
+                    </p>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={draftValue}
+                      placeholder="Enter new entry price"
+                      inputMode="decimal"
+                      aria-label="Update entry price"
+                      onChange={(event) =>
+                        setEntryPriceDrafts((prev) => ({
+                          ...prev,
+                          [trade.id]: event.target.value,
+                        }))
+                      }
+                      className="w-full rounded-md border border-zinc-700 bg-zinc-900/70 px-3 py-2 text-sm sm:w-44"
+                    />
+                    <button
+                      className="w-full rounded-md bg-amber-400 px-3 py-2 text-sm font-medium text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                      disabled={!canUpdateEntryPrice || !!updatingTradeId}
+                      onClick={() => {
+                        setUpdatingTradeId(trade.id);
+                        return (
+                        updateTradeEntryPrice.mutate(
+                          { tradeId: trade.id, entryPrice: parsedDraftValue },
+                          {
+                            onSuccess: () => {
+                              setEntryPriceDrafts((prev) => {
+                                const next = { ...prev };
+                                delete next[trade.id];
+                                return next;
+                              });
                             },
-                          )
-                          );
-                        }}
-                      >
-                        {isUpdatingThisTrade ? "Updating..." : "Update Buy Price"}
-                      </button>
-                      </div>
+                            onSettled: () => {
+                              setUpdatingTradeId(null);
+                            },
+                          },
+                        )
+                        );
+                      }}
+                    >
+                      {isUpdatingThisTrade ? "Updating..." : "Update Entry Price"}
+                    </button>
                     </div>
-                  ) : null}
+                  </div>
                   {trade.status === "open" ? (
                     <button className="rounded-md bg-zinc-800 px-2 py-1 text-xs" onClick={() => closeTrade(trade)}>
                       Force Close

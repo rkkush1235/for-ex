@@ -116,7 +116,6 @@ export async function updateUserStatus(input: {
     patch.approvedAt = Date.now();
     patch.approvedBy = input.adminId;
     patch.rejectionReason = "";
-    patch.plainPassword = deleteField();
     patch.aadhaarFrontBase64 = deleteField();
     patch.aadhaarBackBase64 = deleteField();
     patch.selfieBase64 = deleteField();

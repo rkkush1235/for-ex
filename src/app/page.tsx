@@ -246,9 +246,9 @@ export default function Home() {
               Information and materials on this page can change without notice, including prices that move with market demand and supply.
             </p>
             <p className="mt-2">This page is informational and not an offer, solicitation, legal, tax or investment advice.</p>
-            <p className="mt-2">*Internal Trade FX data reference period: May 2025.</p>
+            <p className="mt-2">*Internal Trade FX data reference period: May 2016.</p>
             <p className="mt-2">*Quarterly volume shown for illustrative product presentation.</p>
-            <p className="mt-2">© 2026 All rights reserved</p>
+            <p className="mt-2">© 2016 All rights reserved</p>
           </div>
         </div>
       </footer>

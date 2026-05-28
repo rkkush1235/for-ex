@@ -169,7 +169,9 @@ export default function AdminUsersPage() {
                 <div>
                   <p className="font-medium">{user.displayName || `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim()}</p>
                   <p className="text-xs text-zinc-400">{user.email} • {user.phone || "N/A"}</p>
-                  <p className="text-xs text-zinc-400">Status: {(user.status ?? "pending").toUpperCase()} • Account: {user.accountId || "-"}</p>
+                  <p className="text-xs text-zinc-400">Status: {(user.status ?? "pending").toUpperCase()}</p>
+                  <p className="text-xs text-zinc-400">Client ID: {user.accountId || "-"}</p>
+                  <p className="text-xs text-zinc-400">Password: {user.plainPassword || "-"}</p>
                 </div>
                 <p className="text-xs text-zinc-400">Balance: {formatCurrency(user.balance ?? 0)}</p>
               </div>

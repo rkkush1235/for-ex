@@ -3,7 +3,6 @@ import {
   collection,
   doc,
   getDoc,
-  getDocs,
   increment,
   onSnapshot,
   orderBy,
@@ -122,19 +121,6 @@ export function subscribeAllTrades(
   );
 }
 
-async function getAvailableHoldingQty(userId: string, asset: string) {
-  const q = query(tradesCol, where("userId", "==", userId));
-  const snap = await getDocs(q);
-
-  const rows = snap.docs
-    .map((d) => d.data() as Omit<Trade, "id">)
-    .filter((trade) => trade.asset === asset && trade.status === "open");
-  const buyQty = rows.filter((trade) => trade.type === "buy").reduce((acc, trade) => acc + trade.quantity, 0);
-  const sellQty = rows.filter((trade) => trade.type === "sell").reduce((acc, trade) => acc + trade.quantity, 0);
-
-  return Math.max(0, buyQty - sellQty);
-}
-
 export async function placeTrade(input: {
   userId: string;
   asset: string;
@@ -171,13 +157,6 @@ export async function placeTrade(input: {
   const userDisplayName = userProfile.displayName ?? "Trader";
   const userEmail = userProfile.email ?? "";
   const userSearchKey = `${userDisplayName} ${userEmail} ${userId}`.trim().toLowerCase();
-
-  if (type === "sell") {
-    const availableQty = await getAvailableHoldingQty(userId, asset);
-    if (availableQty < safeQuantity) {
-      throw new Error(`Insufficient holdings to sell. Available: ${availableQty.toFixed(4)}`);
-    }
-  }
 
   await runTransaction(db, async (tx) => {
     const userSnap = await tx.get(userRef);

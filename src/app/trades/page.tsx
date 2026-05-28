@@ -13,7 +13,7 @@ export default function TradesPage() {
   const closeTrade = useCloseTrade();
 
   return (
-    <AppShell title="Trades">
+    <AppShell title="Position">
       <TradesTable
         trades={trades}
         priceMap={market.prices}

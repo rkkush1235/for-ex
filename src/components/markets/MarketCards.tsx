@@ -199,7 +199,7 @@ export function MarketCards({ snapshot }: { snapshot: MarketSnapshot }) {
           <div className="glass w-full max-w-xl space-y-3 rounded-2xl p-4">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold">
-                {draftOrder.side.toUpperCase()} {draftOrder.symbol}
+                {draftOrder.side === "buy" ? "BUY" : "SELL"} {draftOrder.symbol}
               </h4>
               <button
                 type="button"

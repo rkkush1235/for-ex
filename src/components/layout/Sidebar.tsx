@@ -7,9 +7,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { useAuth } from "@/hooks/useAuth";
 import {
   BarChart3,
-  CircleDollarSign,
   LayoutDashboard,
-  Settings,
   Shield,
   User,
   Wallet,
@@ -20,13 +18,12 @@ import {
 const links = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/markets", label: "Markets", icon: BarChart3 },
-  { href: "/trading", label: "Trading", icon: CircleDollarSign },
-  { href: "/trades", label: "Trades", icon: CircleDollarSign },
+  { href: "/trades", label: "Position", icon: BarChart3 },
   { href: "/wallet", label: "Wallet", icon: Wallet },
   { href: "/deposit", label: "Deposit", icon: Landmark },
   { href: "/withdraw", label: "Withdraw", icon: HandCoins },
   { href: "/profile", label: "Profile", icon: User },
-  { href: "/settings", label: "Settings", icon: Settings },
+  // { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 const adminLinks = [
@@ -35,7 +32,7 @@ const adminLinks = [
   { href: "/admin/kyc", label: "Admin KYC", icon: Shield },
   { href: "/admin/deposits", label: "Admin Deposits", icon: Landmark },
   { href: "/admin/withdrawals", label: "Admin Withdrawals", icon: HandCoins },
-  { href: "/admin/settings", label: "Admin Settings", icon: Settings },
+  // { href: "/admin/settings", label: "Admin Settings", icon: Settings },
 ];
 
 export function Sidebar() {
