@@ -358,11 +358,6 @@ export function MarketCards({ snapshot }: { snapshot: MarketSnapshot }) {
               <p className="text-[11px] text-zinc-300">
                 Max Qty at {effectiveLeverage}x: {maxTradeQtyLimit.toFixed(6)}
               </p>
-              {willCloseOpposite ? (
-                <p className="text-[11px] text-amber-300">
-                  Opposite action will close current position first. Press {draftOrder.side.toUpperCase()} again to open new position.
-                </p>
-              ) : null}
             </div>
 
             <input

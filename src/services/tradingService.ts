@@ -303,30 +303,7 @@ export async function placeTrade(input: {
     throw new Error("Live price unavailable for selected asset");
   }
 
-  const openTrades = await getOpenTrades(userId);
-  if (openTrades.length > 0) {
-    const activeType = openTrades[0].type;
-    if (activeType === type) {
-      throw new Error(`Only one active position allowed. ${activeType.toUpperCase()} position already active.`);
-    }
-
-    const priceByAsset: Record<string, number> = {};
-    for (const trade of openTrades) {
-      priceByAsset[trade.asset] = trade.asset === asset
-        ? currentPrice
-        : await latestPrice(trade.asset);
-    }
-
-    const closed = await closePosition(userId, openTrades, priceByAsset);
-    return {
-      action: "closed_position",
-      closedType: closed.closedType,
-      message:
-        closed.closedType === "buy"
-          ? "BUY position closed successfully. Press SELL again to open short position."
-          : "SELL position closed successfully. Press BUY again to open long position.",
-    };
-  }
+  // Allow multiple positions (BUY and SELL) for same asset, like CoinDCX. No forced closing.
 
   const rawLeverage = safeNumber(input.leverage, 1, 300);
   const safeLeverage = Math.max(1, rawLeverage);
